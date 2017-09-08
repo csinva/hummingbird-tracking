@@ -65,36 +65,51 @@ cap.release()
 cv2.destroyAllWindows()
 
 
-# plot thetas
+# plot vars (num_times x num_lines) 
 thetas = np.array(thetas) * 360 / (2 * math.pi)
-theta_out = np.abs(thetas[:, 0] - thetas[:, 1])
+rhos = np.array(rhos)
+mean_thetas = []
+thetas[rhos<0] = -1 * (180 - thetas[rhos<0])  # altering thetas here
+mean_thetas = []
+mean_thetas = []
+print('num <0', np.sum(rhos<0))
+print('num_times, num_lines', thetas.shape)
+# print(thetas)
 all_vars = [rhos, thetas]
 for var_num in range(2):
-    var = np.array(all_vars[var_num])
-    var = np.array(var) # num_time, 
+    mean_thetas = []
+    var = all_vars[var_num]
     (num_times, num_lines) = var.shape
     cm_subsection = np.linspace(0, 1, num_lines) 
     colors = [ cmx.jet(x) for x in cm_subsection ]
     fig = plt.figure(figsize=(14, 6))
     km = KMeans(n_clusters=2, random_state=0)
     for line_num in range(num_lines):
-        # plt.plot(range(num_times), var[:, line_num], 'o', label=str(line_num), alpha = 0.3, color = colors[line_num])
+        plt.plot(range(num_times), var[:, line_num], 'o', label=str(line_num), alpha = 0.3, color = colors[line_num])
         pass
     for t in range(num_times):    
         km.fit(var[t, :].reshape(-1, 1))
         # print(km.cluster_centers_.shape)
         for m in range(km.cluster_centers_.shape[0]):
-            plt.plot(t, km.cluster_centers_[m], 'x', color='b', alpha=1)
+            plt.plot(t, km.cluster_centers_[m], 'o', color='black', alpha=1, markersize=10)
+        mean_thetas.append(km.cluster_centers_)
     plt.grid(True)
+    plt.xticks(range(num_times))
     plt.xlim((0, max_frames))
          
-    plt.legend()
+    # plt.legend()
     if var_num  == 0:
         plt.savefig('rhos.png')
     else:
         plt.savefig('thetas.png')
+mean_thetas = np.array(mean_thetas)
+print('mean_thetas.shape', mean_thetas.shape)
+theta_out = np.abs(mean_thetas[:, 0] - mean_thetas[:, 1])
 
 fig = plt.figure(figsize=(14, 6))
-plt.plot(theta_out, 'o')
+plt.plot(range(num_times), theta_out, 'o')
+plt.grid(True)
+plt.xticks(range(num_times))
+plt.xlim((0, max_frames))
 plt.savefig('theta_diff.png')
 print('done plotting')
