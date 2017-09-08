@@ -10,27 +10,35 @@ import matplotlib.colors as colors
 import matplotlib.cm as cmx
 from sklearn.cluster import KMeans
 
-def dist(p1, p2):
-    return (p1[0] - p2[0])*(p1[0] - p2[0]) + (p1[1] - p2[1])*(p1[1] - p2[1])
+
+
+
 
 # starts and ends both 2x2
-# returns start0, start1, end0, end1 such that 
+# returns them in a specific order (see below)
 def match_starts_with_ends(starts, ends):
-    dist00 = dist(starts[0], ends[0])
-    dist01 = dist(starts[0], ends[1])
+    s0, s1, e0, e1 = starts[0], starts[1], ends[0], ends[1]
+    
+    def dist(p1, p2):
+        return (p1[0] - p2[0])*(p1[0] - p2[0]) + (p1[1] - p2[1])*(p1[1] - p2[1])
     
     # distance between start0 and end0 are minimized
-    if not dist00 < dist01:
-        temp = ends[0]
-        ends[0] = ends[1]
-        ends[1] = ends[0]
+    if not dist(s0, e0) < dist(s0, e1):
+        e0, e1 = e1, e0
     
+    # starts should be lower than ends (larger y values)
+    if not s0[1] > e0[1]:
+        s0, e0 = e0, s0
+    if not s1[1] > e1[1]:
+        s1, e1 = e1, s1
+
     # start0, end0 should be for the lower wing (larger y values)
-    max_y_0 = max(starts[0][1], ends[0][1])
-    max_y_1 = max(starts[1][1], ends[1][1])
-    if not max_y_0 > max_y_1:
-        return starts[1], starts[0], ends[1], ends[0]
-    return starts[0], starts[1], ends[0], ends[1]
+    if not s0[1] > s1[1]:
+        ts, te = s0, e0
+        s0, e0 = s1, e1
+        s1, e1 = ts, te
+            
+    return s0, s1, e0, e1
     
 data_folder = '/Users/chandan/drive/research/hummingbird_tracking/data'
 # cap = cv2.VideoCapture(oj(data_folder, 'side', 'ama.mov'))
@@ -56,6 +64,7 @@ km_starts = KMeans(n_clusters=2, random_state=0)
 km_ends = KMeans(n_clusters=2, random_state=0)
 
 while(ret and frame_num < NUM_FRAMES):
+#    print('frame_num', frame_num)
     ret, frame = cap.read()
     fgmask = fgbg.apply(frame)
     lines = cv2.HoughLinesP(fgmask, 1, np.pi / 180, 100, 100, 20) # 200 is num_votes
@@ -79,7 +88,7 @@ while(ret and frame_num < NUM_FRAMES):
             c = (255, 0, 0) if i==0 else (0, 0, 255) # bottom should be red
             cv2.circle(backtorgb,
                        (int(starts[i][0]), int(starts[i][1])), 
-                       radius=3, color=c, thickness=2)
+                       radius=5, color=c, thickness=2) # start has a slightly larger radius, should be below end
             cv2.circle(backtorgb,
                        (int(ends[i][0]), int(ends[i][1])), 
                        radius=3, color=c, thickness=2)
