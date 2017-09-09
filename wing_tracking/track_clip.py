@@ -36,17 +36,23 @@ def match_starts_with_ends(starts, ends):
             
     return s0, s1, e0, e1
 
-def plot_endpoints(backtorgb, start1, start2, end1, end2):
+# draw two arrows onto the given image
+def plot_endpoints(masked_frame_rgb, start1, start2, end1, end2):
         starts = [start1, start2]
         ends = [end1, end2]
         for i in range(2):
             c = (255, 0, 0) if i==0 else (0, 0, 255) # bottom arrow should be red
-            cv2.arrowedLine(backtorgb,
+            cv2.arrowedLine(masked_frame_rgb,
                            (int(starts[i][0]), int(starts[i][1])), # should point upwards
                            (int(ends[i][0]), int(ends[i][1])),
                            color=c, thickness=3)
 
-def track_angle_for_clip(fname, NUM_FRAMES=None, NUM_LINES=20):    
+# given a video filename and some parameters, calculates the angle between wings and saves to png and csv
+# note: output is unpredictable when bird is not in frame
+# note: bird must be horizontal facing left
+# note: since the algorithm uses motion, the first and last data point should be ignored
+# output: theta is the angle measure from one wing, around the back of the bird, to the other wing
+def track_angle_for_clip(fname, out_dir="out", NUM_FRAMES=None, NUM_LINES=20, save_ims=False):    
     print('tracking', fname)
     cap = cv2.VideoCapture(fname)
     fgbg = cv2.createBackgroundSubtractorMOG2()
@@ -60,22 +66,26 @@ def track_angle_for_clip(fname, NUM_FRAMES=None, NUM_LINES=20):
     km_starts = KMeans(n_clusters=2, random_state=0)
     km_ends = KMeans(n_clusters=2, random_state=0)
     thetas = np.zeros((NUM_FRAMES, 1)) # stores the data
-
+    if not os.path.exists(out_dir):
+        os.makedirs(out_dir)
+    
     while(ret and frame_num < NUM_FRAMES):
         # read frame
         ret, frame = cap.read()
         fgmask = fgbg.apply(frame)
-        backtorgb = cv2.cvtColor(fgmask,cv2.COLOR_GRAY2RGB)
+        masked_frame_rgb = cv2.cvtColor(fgmask,cv2.COLOR_GRAY2RGB)
         
         # find lines
         lines = cv2.HoughLinesP(fgmask, 1, np.pi / 180, 100, 100, 20) # 200 is num_votes
-        starts = np.zeros((NUM_LINES, 2))
-        ends = np.zeros((NUM_LINES, 2))
-        for line_num in range(NUM_LINES):
+        num_lines_possible = min(NUM_LINES, len(lines))
+        starts = np.zeros((num_lines_possible, 2))
+        ends = np.zeros((num_lines_possible, 2))
+        for line_num in range(num_lines_possible):
             for x1,y1,x2,y2 in lines[line_num]:
-                cv2.line(backtorgb,(x1,y1),(x2,y2),(0,255,0),2)
                 starts[line_num] = [x1, y1]
                 ends[line_num] = [x2, y2]
+                if save_ims:
+                    cv2.line(masked_frame_rgb, (x1,y1), (x2,y2), (0, 255, 0), 2)
                 
 
         # find clusters
@@ -84,7 +94,6 @@ def track_angle_for_clip(fname, NUM_FRAMES=None, NUM_LINES=20):
 
         # start should match up with end that is closest to it
         start0, start1, end0, end1 = match_starts_with_ends(km_starts.cluster_centers_, km_ends.cluster_centers_)
-        plot_endpoints(backtorgb, start0, start1, end0, end1)
 
         # calculate theta from mean_starts, mean_ends (NUM_FRAMES x TOP_OR_BOT x X_OR_Y)
         x,y = 0,1
@@ -96,19 +105,26 @@ def track_angle_for_clip(fname, NUM_FRAMES=None, NUM_LINES=20):
         theta_bot = 180 - abs(np.arctan2(dy_bot, dx_bot) * 180 / np.pi)
         theta_top = abs(np.arctan2(dy_top, dx_top) * 180 / np.pi)
         thetas[frame_num] = theta_bot + theta_top
-        cv2.putText(backtorgb, "theta: " + str(thetas[frame_num]), (0, 40), 
-                    cv2.FONT_HERSHEY_SIMPLEX, fontScale=1, color=(0, 255, 0))    
-        imageio.imwrite('out/frame_' + str(frame_num) + '.jpg', backtorgb)
+        
+        if save_ims:
+            for im in (frame, masked_frame_rgb):
+                plot_endpoints(im, start0, start1, end0, end1)
+                cv2.putText(im, "theta: " + str(thetas[frame_num]), (0, 40), 
+                            cv2.FONT_HERSHEY_SIMPLEX, fontScale=1, color=(0, 255, 0))    
+            imageio.imwrite(oj(out_dir, 'frame_' + str(frame_num) + '.jpg'), masked_frame_rgb)
+            imageio.imwrite(oj(out_dir, 'frame_' + str(frame_num) + '_orig.jpg'), frame)
         frame_num += 1
 
+    # release video
     cap.release()
     cv2.destroyAllWindows()
 
 
     # saving
     fig = plt.figure(figsize=(14, 6))
-    thetas = thetas.sum(axis=1)
     plt.plot(range(NUM_FRAMES), thetas, 'o')
-    plt.savefig('thetas.png')
-    np.savetxt('theta.csv', thetas, fmt="%3.2f", delimiter=',')
+    plt.xlabel('Frame number')
+    plt.ylabel('Theta')
+    plt.savefig(oj(out_dir, 'thetas.png'))
+    np.savetxt(oj(out_dir, 'thetas.csv'), thetas, fmt="%3.2f", delimiter=',')
     print('succesfully completed')

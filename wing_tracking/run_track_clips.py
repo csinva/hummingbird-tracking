@@ -13,4 +13,5 @@ import track_clip
 
 data_folder = '/Users/chandan/drive/research/hummingbird_tracking/data'
 fname = oj(data_folder, 'top', 'clip_full_fit.mp4')
-track_clip.track_angle_for_clip(fname, NUM_FRAMES=20)
+out_dir = "out"
+track_clip.track_angle_for_clip(fname, out_dir=out_dir, NUM_FRAMES=20, save_ims=False) # NUM_FRAMES=20
