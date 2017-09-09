@@ -10,10 +10,6 @@ import matplotlib.colors as colors
 import matplotlib.cm as cmx
 from sklearn.cluster import KMeans
 
-
-
-
-
 # starts and ends both 2x2
 # returns them in a specific order (see below)
 def match_starts_with_ends(starts, ends):
@@ -39,7 +35,17 @@ def match_starts_with_ends(starts, ends):
         s1, e1 = ts, te
             
     return s0, s1, e0, e1
-    
+
+def plot_endpoints(backtorgb, start1, start2, end1, end2):
+        starts = [start1, start2]
+        ends = [end1, end2]
+        for i in range(2):
+            c = (255, 0, 0) if i==0 else (0, 0, 255) # bottom arrow should be red
+            cv2.arrowedLine(backtorgb,
+                           (int(starts[i][0]), int(starts[i][1])), # should point upwards
+                           (int(ends[i][0]), int(ends[i][1])),
+                           color=c, thickness=3)
+
 data_folder = '/Users/chandan/drive/research/hummingbird_tracking/data'
 # cap = cv2.VideoCapture(oj(data_folder, 'side', 'ama.mov'))
 # cap = cv2.VideoCapture(oj(data_folder, 'side', 'cor.mov'))
@@ -50,11 +56,12 @@ f_width, f_height = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH)), int(cap.get(cv2.CAP_
 if os.path.exists('out.avi'):
     os.remove('out.avi')
 
-# intialize loop
+# initialize loop
 NUM_FRAMES = 20
 NUM_LINES = 20
 ret = True 
 frame_num = 0
+t = range(NUM_FRAMES)
 
 # intialize cluster starts and ends
 starts, ends = np.zeros((NUM_FRAMES, NUM_LINES, 2)), np.zeros((NUM_FRAMES, NUM_LINES, 2))
@@ -62,6 +69,7 @@ mean_starts = np.zeros((NUM_FRAMES, 2, 2))
 mean_ends = np.zeros((NUM_FRAMES, 2, 2))
 km_starts = KMeans(n_clusters=2, random_state=0)
 km_ends = KMeans(n_clusters=2, random_state=0)
+thetas = np.zeros((NUM_FRAMES, 2))
 
 while(ret and frame_num < NUM_FRAMES):
 #    print('frame_num', frame_num)
@@ -80,47 +88,50 @@ while(ret and frame_num < NUM_FRAMES):
     km_starts.fit(starts[frame_num, :])
     km_ends.fit(ends[frame_num, :])
     
-    
-    def plot_endpoints(backtorgb, start1, start2, end1, end2):
-        starts = [start1, start2]
-        ends = [end1, end2]
-        for i in range(2):
-            c = (255, 0, 0) if i==0 else (0, 0, 255) # bottom should be red
-            cv2.circle(backtorgb,
-                       (int(starts[i][0]), int(starts[i][1])), 
-                       radius=5, color=c, thickness=2) # start has a slightly larger radius, should be below end
-            cv2.circle(backtorgb,
-                       (int(ends[i][0]), int(ends[i][1])), 
-                       radius=3, color=c, thickness=2)
-    
     # start should match up with end that is closest to it
     start1, start2, end1, end2 = match_starts_with_ends(km_starts.cluster_centers_, km_ends.cluster_centers_)
-    plot_endpoints(backtorgb, start1, start2, end1, end2)
     mean_starts[frame_num] = [start1, start2]
     mean_ends[frame_num] = [end1, end2]
-        
+    plot_endpoints(backtorgb, start1, start2, end1, end2)
+    
+    # calculate theta from mean_starts, mean_ends (NUM_FRAMES x TOP_OR_BOT x X_OR_Y)
+    top,bot = 1,0
+    x,y = 0,1
+    dy_top = mean_ends[frame_num][top][y] - mean_starts[frame_num][top][y] # pos
+    dx_top = mean_ends[frame_num][top][x] - mean_starts[frame_num][top][x] # pos or neg
+    dy_bot = mean_ends[frame_num][bot][y] - mean_starts[frame_num][bot][y] # neg
+    dx_bot = mean_ends[frame_num][bot][x] - mean_starts[frame_num][bot][x] # pos or neg
+
+    theta_top = abs(np.arctan2(dy_top, dx_top) * 180 / np.pi)
+    theta_bot = 180 - abs(np.arctan2(dy_bot, dx_bot) * 180 / np.pi)
+    thetas[frame_num] = [theta_top, theta_bot]
+    cv2.putText(backtorgb, "theta_top: " + str(theta_top), (0, 40), 
+                cv2.FONT_HERSHEY_SIMPLEX, fontScale=1, color=(0, 255, 0))
+    cv2.putText(backtorgb, "theta_bot: " + str(theta_bot), (0, f_height - 40), 
+                cv2.FONT_HERSHEY_SIMPLEX, fontScale=1, color=(0, 255, 0))
+    
     imageio.imwrite('out/frame_' + str(frame_num) + '.jpg', backtorgb)
     frame_num += 1
 
 cap.release()
 cv2.destroyAllWindows()
 
+    
 
 # plotting
-cm_subsection = np.linspace(0, NUM_LINES) 
-colors = [ cmx.jet(x) for x in cm_subsection ]
 fig = plt.figure(figsize=(14, 6))
-
-for line_num in range(NUM_LINES):
-    plt.plot(range(NUM_FRAMES), starts[:, :, 0], 'o', label=str(line_num), alpha = 0.3, color = colors[line_num])
-
-    
-    
-# calculate slopes
+plt.plot(t, thetas[:, 0], 'o')
+plt.plot(t, thetas[:, 1], 'o')
+plt.savefig('thetas.png')
+#for line_num in range(NUM_LINES):
+#    plt.plot(range(NUM_FRAMES), starts[:, :, 0], 'o', label=str(line_num), alpha = 0.3, color = colors[line_num])
 
     
     
-plt.savefig('xs.jpg')
+
+    
+    
+#plt.savefig('xs.jpg')
 #thetas = np.array(thetas) * 360 / (2 * math.pi)
 #rhos = np.array(rhos)
 #mean_thetas = []
