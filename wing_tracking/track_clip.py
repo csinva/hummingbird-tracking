@@ -46,135 +46,69 @@ def plot_endpoints(backtorgb, start1, start2, end1, end2):
                            (int(ends[i][0]), int(ends[i][1])),
                            color=c, thickness=3)
 
-data_folder = '/Users/chandan/drive/research/hummingbird_tracking/data'
-# cap = cv2.VideoCapture(oj(data_folder, 'side', 'ama.mov'))
-# cap = cv2.VideoCapture(oj(data_folder, 'side', 'cor.mov'))
-cap = cv2.VideoCapture(oj(data_folder, 'top', 'clip_full_fit.mp4'))
-fgbg = cv2.createBackgroundSubtractorMOG2()
+def track_angle_for_clip(fname, NUM_FRAMES=None, NUM_LINES=20):    
+    print('tracking', fname)
+    cap = cv2.VideoCapture(fname)
+    fgbg = cv2.createBackgroundSubtractorMOG2()
 
-f_width, f_height = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH)), int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-if os.path.exists('out.avi'):
-    os.remove('out.avi')
+    # initialize loop
+    if NUM_FRAMES is None:
+        NUM_FRAMES = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+        print('num_frames', NUM_FRAMES)
+    ret = True 
+    frame_num = 0
+    km_starts = KMeans(n_clusters=2, random_state=0)
+    km_ends = KMeans(n_clusters=2, random_state=0)
+    thetas = np.zeros((NUM_FRAMES, 1)) # stores the data
 
-# initialize loop
-NUM_FRAMES = 20
-NUM_LINES = 20
-ret = True 
-frame_num = 0
-t = range(NUM_FRAMES)
+    while(ret and frame_num < NUM_FRAMES):
+        # read frame
+        ret, frame = cap.read()
+        fgmask = fgbg.apply(frame)
+        backtorgb = cv2.cvtColor(fgmask,cv2.COLOR_GRAY2RGB)
+        
+        # find lines
+        lines = cv2.HoughLinesP(fgmask, 1, np.pi / 180, 100, 100, 20) # 200 is num_votes
+        starts = np.zeros((NUM_LINES, 2))
+        ends = np.zeros((NUM_LINES, 2))
+        for line_num in range(NUM_LINES):
+            for x1,y1,x2,y2 in lines[line_num]:
+                cv2.line(backtorgb,(x1,y1),(x2,y2),(0,255,0),2)
+                starts[line_num] = [x1, y1]
+                ends[line_num] = [x2, y2]
+                
 
-# intialize cluster starts and ends
-starts, ends = np.zeros((NUM_FRAMES, NUM_LINES, 2)), np.zeros((NUM_FRAMES, NUM_LINES, 2))
-mean_starts = np.zeros((NUM_FRAMES, 2, 2))
-mean_ends = np.zeros((NUM_FRAMES, 2, 2))
-km_starts = KMeans(n_clusters=2, random_state=0)
-km_ends = KMeans(n_clusters=2, random_state=0)
-thetas = np.zeros((NUM_FRAMES, 2))
+        # find clusters
+        km_starts.fit(starts)
+        km_ends.fit(ends)
 
-while(ret and frame_num < NUM_FRAMES):
-#    print('frame_num', frame_num)
-    ret, frame = cap.read()
-    fgmask = fgbg.apply(frame)
-    lines = cv2.HoughLinesP(fgmask, 1, np.pi / 180, 100, 100, 20) # 200 is num_votes
-#    print('len lines', len(lines))
-    backtorgb = cv2.cvtColor(fgmask,cv2.COLOR_GRAY2RGB)
-    for line_num in range(NUM_LINES):
-        for x1,y1,x2,y2 in lines[line_num]:
-            cv2.line(backtorgb,(x1,y1),(x2,y2),(0,255,0),2)
-            starts[frame_num, line_num] = [x1, y1]
-            ends[frame_num, line_num] = [x2, y2]
-            
-    # find clusters
-    km_starts.fit(starts[frame_num, :])
-    km_ends.fit(ends[frame_num, :])
-    
-    # start should match up with end that is closest to it
-    start1, start2, end1, end2 = match_starts_with_ends(km_starts.cluster_centers_, km_ends.cluster_centers_)
-    mean_starts[frame_num] = [start1, start2]
-    mean_ends[frame_num] = [end1, end2]
-    plot_endpoints(backtorgb, start1, start2, end1, end2)
-    
-    # calculate theta from mean_starts, mean_ends (NUM_FRAMES x TOP_OR_BOT x X_OR_Y)
-    top,bot = 1,0
-    x,y = 0,1
-    dy_top = mean_ends[frame_num][top][y] - mean_starts[frame_num][top][y] # pos
-    dx_top = mean_ends[frame_num][top][x] - mean_starts[frame_num][top][x] # pos or neg
-    dy_bot = mean_ends[frame_num][bot][y] - mean_starts[frame_num][bot][y] # neg
-    dx_bot = mean_ends[frame_num][bot][x] - mean_starts[frame_num][bot][x] # pos or neg
+        # start should match up with end that is closest to it
+        start0, start1, end0, end1 = match_starts_with_ends(km_starts.cluster_centers_, km_ends.cluster_centers_)
+        plot_endpoints(backtorgb, start0, start1, end0, end1)
 
-    theta_top = abs(np.arctan2(dy_top, dx_top) * 180 / np.pi)
-    theta_bot = 180 - abs(np.arctan2(dy_bot, dx_bot) * 180 / np.pi)
-    thetas[frame_num] = [theta_top, theta_bot]
-    cv2.putText(backtorgb, "theta_top: " + str(theta_top), (0, 40), 
-                cv2.FONT_HERSHEY_SIMPLEX, fontScale=1, color=(0, 255, 0))
-    cv2.putText(backtorgb, "theta_bot: " + str(theta_bot), (0, f_height - 40), 
-                cv2.FONT_HERSHEY_SIMPLEX, fontScale=1, color=(0, 255, 0))
-    
-    imageio.imwrite('out/frame_' + str(frame_num) + '.jpg', backtorgb)
-    frame_num += 1
+        # calculate theta from mean_starts, mean_ends (NUM_FRAMES x TOP_OR_BOT x X_OR_Y)
+        x,y = 0,1
+        dy_bot = end0[y] - start0[y] # neg
+        dx_bot = end0[x] - start0[x] # pos or neg
+        dy_top = end1[y] - start1[y] # pos
+        dx_top = end1[x] - start1[x] # pos or neg
 
-cap.release()
-cv2.destroyAllWindows()
+        theta_bot = 180 - abs(np.arctan2(dy_bot, dx_bot) * 180 / np.pi)
+        theta_top = abs(np.arctan2(dy_top, dx_top) * 180 / np.pi)
+        thetas[frame_num] = theta_bot + theta_top
+        cv2.putText(backtorgb, "theta: " + str(thetas[frame_num]), (0, 40), 
+                    cv2.FONT_HERSHEY_SIMPLEX, fontScale=1, color=(0, 255, 0))    
+        imageio.imwrite('out/frame_' + str(frame_num) + '.jpg', backtorgb)
+        frame_num += 1
 
-    
+    cap.release()
+    cv2.destroyAllWindows()
 
-# plotting
-fig = plt.figure(figsize=(14, 6))
-plt.plot(t, thetas[:, 0], 'o')
-plt.plot(t, thetas[:, 1], 'o')
-plt.savefig('thetas.png')
-#for line_num in range(NUM_LINES):
-#    plt.plot(range(NUM_FRAMES), starts[:, :, 0], 'o', label=str(line_num), alpha = 0.3, color = colors[line_num])
 
-    
-    
-
-    
-    
-#plt.savefig('xs.jpg')
-#thetas = np.array(thetas) * 360 / (2 * math.pi)
-#rhos = np.array(rhos)
-#mean_thetas = []
-#thetas[rhos<0] = -1 * (180 - thetas[rhos<0])  # altering thetas here
-#mean_thetas = []
-#mean_thetas = []
-#print('num <0', np.sum(rhos<0))
-#print('NUM_FRAMES, NUM_LINES', thetas.shape)
-## print(thetas)
-#all_vars = [rhos, thetas]
-#for var_num in range(2):
-#    mean_thetas = []
-#    var = all_vars[var_num]
-     
-#        pass
-#    for t in range(NUM_FRAMES):    
-#        km.fit(var[t, :].reshape(-1, 1))
-#        # print(km.cluster_centers_.shape)
-#        for m in range(km.cluster_centers_.shape[0]):
-#            plt.plot(t, km.cluster_centers_[m], 'o', color='black', alpha=1, markersize=10)
-#        mean_thetas.append(km.cluster_centers_)
-#    plt.grid(True)
-#    plt.xticks(range(NUM_FRAMES))
-#    plt.xlim((0, NUM_FRAMES))
-#         
-#    # plt.legend()
-#    if var_num  == 0:
-#        plt.savefig('rhos.png')
-#    else:
-#        plt.savefig('thetas.png')
-#mean_thetas = np.array(mean_thetas)
-#print('mean_thetas.shape', mean_thetas.shape)
-#for i in range(NUM_FRAMES):
-#    if mean_thetas[i, 0] * mean_thetas[i, 1] < 0: # want one angle to be neg, one pos
-#        continue
-#    else:
-#        mean_thetas[i, 1] = (180 - mean_thetas) # if replace the smaller angle, measurement gets much bigger, if we replace the bigger angle measurement gets much smaller
-#theta_out = np.abs(mean_thetas[:, 0] - mean_thetas[:, 1])
-#
-#fig = plt.figure(figsize=(14, 6))
-#plt.plot(range(NUM_FRAMES), theta_out, 'o')
-#plt.grid(True)
-#plt.xticks(range(NUM_FRAMES))
-#plt.xlim((0, NUM_FRAMES))
-#plt.savefig('theta_diff.png')
-#print('done plotting')
+    # saving
+    fig = plt.figure(figsize=(14, 6))
+    thetas = thetas.sum(axis=1)
+    plt.plot(range(NUM_FRAMES), thetas, 'o')
+    plt.savefig('thetas.png')
+    np.savetxt('theta.csv', thetas, fmt="%3.2f", delimiter=',')
+    print('succesfully completed')
