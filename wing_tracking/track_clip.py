@@ -119,7 +119,6 @@ def track_angle_for_clip(fname, out_dir="out", NUM_FRAMES=None, NUM_LINES=20, sa
     cap.release()
     cv2.destroyAllWindows()
 
-
     # saving
     fig = plt.figure(figsize=(14, 6))
     plt.plot(range(NUM_FRAMES), thetas, 'o')
@@ -128,3 +127,9 @@ def track_angle_for_clip(fname, out_dir="out", NUM_FRAMES=None, NUM_LINES=20, sa
     plt.savefig(oj(out_dir, 'thetas.png'))
     np.savetxt(oj(out_dir, 'thetas.csv'), thetas, fmt="%3.2f", delimiter=',')
     print('succesfully completed')
+
+if __name__=="__main__":
+    data_folder = '/Users/chandan/drive/research/hummingbird_tracking/data'
+    fname = oj(data_folder, 'top', 'clip_full_fit.mp4')
+    out_dir = "out"
+    track_angle_for_clip(fname, out_dir=out_dir, NUM_FRAMES=20, save_ims=False) # NUM_FRAMES=20

@@ -10,8 +10,12 @@ import matplotlib.colors as colors
 import matplotlib.cm as cmx
 from sklearn.cluster import KMeans
 
+def tongue_from_tube_motion(tube_motion, x_meniscus):
+    
+    return None
+
 # calculate meniscus from tube_motion and previous meniscus
-def meniscus_from_masked_tube(tube_motion, x_meniscus_prev):
+def meniscus_from_tube_motion(tube_motion, x_meniscus_prev):
     ave_ys = np.sum(tube_motion > 0, axis=0)
     x_meniscus = np.argmax(ave_ys)
     conf = ave_ys[x_meniscus]
@@ -51,6 +55,7 @@ def track_meniscus_for_clip(fname, tube_pos, out_dir="out", NUM_FRAMES=None, NUM
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
     x_meniscus = 0
+    meniscus_arr = np.zeros((NUM_FRAMES, 1)) # stores the data
     
     # loop over frames
     while(ret and frame_num < NUM_FRAMES):
@@ -65,13 +70,16 @@ def track_meniscus_for_clip(fname, tube_pos, out_dir="out", NUM_FRAMES=None, NUM
         tube = frame[top:bot, left:]
         tube_motion = fgbg_tube.apply(tube)
         masked_tube_rgb = cv2.cvtColor(tube_motion, cv2.COLOR_GRAY2RGB)
-#        cv2.circle(frame, center=(left, top), radius=6, color=(255, 0, 0), thickness=5)
-#        cv2.circle(frame, center=(left, bot), radius=6, color=(255, 0, 0), thickness=5)
-
+        cv2.circle(frame, center=(left, top), radius=6, color=(255, 0, 0), thickness=5)
+        cv2.circle(frame, center=(left, bot), radius=6, color=(255, 0, 0), thickness=5)
         
         # track meniscus
-        x_meniscus = meniscus_from_masked_tube(tube_motion, x_meniscus)
+        x_meniscus = meniscus_from_tube_motion(tube_motion, x_meniscus)
         cv2.circle(masked_tube_rgb, center=(int(x_meniscus), int(10)), radius=15, color=(255, 0, 0), thickness=5)
+        meniscus_arr[frame_num] = x_meniscus
+        
+        # track tongue tip
+        x_tongue = tongue_from_tube_motion(tube_motion, x_meniscus)
         
         # save
         if save_ims:
@@ -81,16 +89,18 @@ def track_meniscus_for_clip(fname, tube_pos, out_dir="out", NUM_FRAMES=None, NUM
             imageio.imwrite(oj(out_dir, 'tube_motion_' + str(frame_num) + '.jpg'), masked_tube_rgb)
         frame_num += 1
 
+    # saving
+    np.savetxt(oj(out_dir, 'meniscus_arr.csv'), meniscus_arr, fmt="%3.2f", delimiter=',')
         
     # release video
     cap.release()
     cv2.destroyAllWindows()
     print('succesfully completed')
     
-if __name__=="__main__":
+if __name__ == "__main__":
     data_folder = '/Users/chandan/drive/research/hummingbird_tracking/data'
     tube_pos_a = (110, 1230, 260) # (top, left, bot)
     tube_pos_b = (84, 485, 126)
     fname = oj(data_folder, 'side', 'b.mov')
     out_dir = "out"
-    track_meniscus_for_clip(fname, tube_pos_b, out_dir=out_dir, NUM_FRAMES=200, save_ims=True) # NUM_FRAMES=20/
+    track_meniscus_for_clip(fname, tube_pos_b, out_dir=out_dir, NUM_FRAMES=200, save_ims=True)
