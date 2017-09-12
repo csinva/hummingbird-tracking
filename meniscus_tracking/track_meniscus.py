@@ -29,7 +29,7 @@ def meniscus_from_tube_motion(tube_motion, x_meniscus_prev):
         x_meniscus = x_meniscus_prev
 
     # if change too big, don't change
-    if abs(x_meniscus - x_meniscus_prev) > jump_thresh: 
+    if abs(x_meniscus - x_meniscus_prev) > jump_thresh and not x_meniscus_prev == 0: 
         print('\tchange too large', abs(x_meniscus - x_meniscus_prev), jump_thresh)
         x_meniscus = x_meniscus_prev
 
@@ -90,6 +90,12 @@ def track_meniscus_for_clip(fname, tube_pos, out_dir="out", NUM_FRAMES=None, NUM
         frame_num += 1
 
     # saving
+    
+    fig = plt.figure(figsize=(14, 6))
+    plt.plot(range(NUM_FRAMES), meniscus_arr, 'o')
+    plt.xlabel('Frame number')
+    plt.ylabel('Meniscus pos')
+    plt.savefig(oj(out_dir, 'meniscus_arr.png'))
     np.savetxt(oj(out_dir, 'meniscus_arr.csv'), meniscus_arr, fmt="%3.2f", delimiter=',')
         
     # release video
@@ -101,6 +107,6 @@ if __name__ == "__main__":
     data_folder = '/Users/chandan/drive/research/hummingbird_tracking/data'
     tube_pos_a = (110, 1230, 260) # (top, left, bot)
     tube_pos_b = (84, 485, 126)
-    fname = oj(data_folder, 'side', 'b.mov')
+    fname = oj(data_folder, 'side', 'a.mov')
     out_dir = "out"
-    track_meniscus_for_clip(fname, tube_pos_b, out_dir=out_dir, NUM_FRAMES=200, save_ims=True)
+    track_meniscus_for_clip(fname, tube_pos_a, out_dir=out_dir, NUM_FRAMES=200, save_ims=True)
