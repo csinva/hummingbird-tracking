@@ -34,7 +34,7 @@ def meniscus_from_tube_motion(tube_motion, x_meniscus_prev):
     if x_meniscus < x_meniscus_prev:
         logging.info('\tdecreased')
         x_meniscus = x_meniscus_prev
-    logging.info('conf %f x_meniscus %.2f', conf, x_meniscus)
+    logging.info('\tconf %.2f x_meniscus %.2f', conf, x_meniscus)
     return x_meniscus
 
 def track_meniscus_for_clip(fname, tube_pos, tube_capacity,
@@ -73,36 +73,57 @@ def track_meniscus_for_clip(fname, tube_pos, tube_capacity,
         tube_big_motion = fgbg_tube_big.apply(tube_big)
         
         # check if bird is drinking
-        def bird_is_drinking(tube_big):
-            return True
-        bird_drinking = bird_is_drinking(tube_big)
+        def bird_is_drinking(tube_big_motion):
+            motion_thresh = 0
+            if np.sum(tube_big_motion>0) > motion_thresh * tube_big_motion.shape[0] * tube_big_motion.shape[1]:
+                return True
+            else:
+                return False
+        bird_drinking = bird_is_drinking(tube_big_motion)
+        stats["is_drinking"][frame_num] = bird_drinking
         if bird_drinking:
             
             # track beak tip
-            def beak_from_frame_motion(frame_motion, x_beak):
+            def beak_from_frame_motion(tube_big, x_beak):
                 return None
-            x_beak = beak_from_frame_motion(tube_big_motion, x_beak)
+            x_beak = beak_from_frame_motion(tube_big, x_beak)
+            stats["beak_tip"][frame_num] = x_beak
 
             # tube for measuring
             tube = frame[top:bot, left:]
             tube_motion = fgbg_tube.apply(tube)
+            denoising_param = 100
+            tube_motion = cv2.fastNlMeansDenoising(tube_motion, denoising_param, denoising_param,
+                                                templateWindowSize=7, searchWindowSize=21)
+            
             
             # track meniscus
             x_meniscus = meniscus_from_tube_motion(tube_motion, x_meniscus)
-            stats["meniscus"][frame_num] = x_meniscus
+            stats["meniscus"][frame_num] = x_meniscus   
+
 
             # track tongue tip
             def tongue_from_tube_motion(tube_motion, x_meniscus, x_tongue):
                 return None
             x_tongue = tongue_from_tube_motion(tube_motion, x_meniscus, x_tongue)
+            if not lines is None:
+                num_lines_possible = min(2, len(lines))
+                for line_num in range(num_lines_possible):
+                    for x1,y1,x2,y2 in lines[line_num]:
+                        if save_ims:
+                            cv2.line(masked_tube_rgb, (x1,y1), (x2,y2), (0, 255, 0), 2)
+            
+            
+            stats["tongue_tip"][frame_num] = x_tongue
 
             # save
             if save_ims:
                 # colorize
                 frame_motion = fgbg.apply(frame)
                 masked_frame_rgb = cv2.cvtColor(frame_motion, cv2.COLOR_GRAY2RGB)
-                masked_tube_rgb = cv2.cvtColor(tube_motion, cv2.COLOR_GRAY2RGB)
                 tube_big_motion_rgb = cv2.cvtColor(tube_big_motion, cv2.COLOR_GRAY2RGB)
+                masked_tube_rgb = cv2.cvtColor(tube_motion, cv2.COLOR_GRAY2RGB)
+
                 
                 # draw things
                 cv2.circle(frame, center=(left, top), radius=6, color=(255, 0, 0), thickness=5)
@@ -110,16 +131,17 @@ def track_meniscus_for_clip(fname, tube_pos, tube_capacity,
                 cv2.circle(masked_tube_rgb, center=(int(x_meniscus), int(10)), 
                            radius=15, color=(255, 0, 0), thickness=5)
                 
-                imageio.imwrite(oj(out_dir, 'frame_' + str(frame_num) + '.jpg'), masked_frame_rgb)
-    #            imageio.imwrite(oj(out_dir, 'orig_frame_' + str(frame_num) + '.jpg'), frame)
-    #            imageio.imwrite(oj(out_dir, 'tube_' + str(frame_num) + '.jpg'), tube)
-    #            imageio.imwrite(oj(out_dir, 'tube_motion_' + str(frame_num) + '.jpg'), masked_tube_rgb)
-                imageio.imwrite(oj(out_dir, 'tube_big_motion_' + str(frame_num) + '.jpg'), tube_big_motion_rgb)
+#                imageio.imwrite(oj(out_dir, 'frame_' + str(frame_num) + '.jpg'), masked_frame_rgb)
+#                imageio.imwrite(oj(out_dir, 'orig_frame_' + str(frame_num) + '.jpg'), frame)
+                imageio.imwrite(oj(out_dir, 'tube_' + str(frame_num) + '.jpg'), tube)
+                imageio.imwrite(oj(out_dir, 'tube_motion_' + str(frame_num) + '.jpg'), masked_tube_rgb)
+#                imageio.imwrite(oj(out_dir, 'tube_big_' + str(frame_num) + '.jpg'), tube_big) 
+#                imageio.imwrite(oj(out_dir, 'tube_big_motion_' + str(frame_num) + '.jpg'), tube_big_motion_rgb)
                 pass
 
-            # read next frame
-            frame_num += 1
-            ret, frame = cap.read()
+        # read next frame
+        frame_num += 1
+        ret, frame = cap.read()
 
     # scaling
 #    meniscus_arr *= tube_capacity * ... # todo: this needs to be fixed
@@ -139,6 +161,7 @@ def track_meniscus_for_clip(fname, tube_pos, tube_capacity,
     print('succesfully completed')
     
 if __name__ == "__main__":
+    # hyperparams - denoising_param, conf_thresh, jump_thresh
     logging.basicConfig(stream=sys.stdout, level=logging.INFO, format = '%(message)s')
     data_folder = '/Users/chandan/drive/research/hummingbird_tracking/data'
     tube_pos_a = (110, 1230, 260) # (top, left, bot)
@@ -147,4 +170,4 @@ if __name__ == "__main__":
     fname = oj(data_folder, 'side', 'a.mov')
     out_dir = "out"
     track_meniscus_for_clip(fname, tube_pos_a, tube_capacity, 
-                            out_dir=out_dir, NUM_FRAMES=50, save_ims=True)
+                            out_dir=out_dir, NUM_FRAMES=25, save_ims=True)
