@@ -8,6 +8,8 @@ import matplotlib.colors as colors
 import matplotlib.cm as cmx
 from sklearn.cluster import KMeans
 import logging, sys
+from scipy import misc
+from skimage.feature import match_template
 
 # calculate meniscus from tube_motion and previous meniscus
 def meniscus_from_tube_motion(tube_motion, x_meniscus_prev):
@@ -87,6 +89,21 @@ def track_meniscus_for_clip(fname, tube_pos, tube_capacity,
                 return None
             x_beak = beak_from_frame_motion(tube_big, x_beak)
             stats["beak_tip"][frame_num] = x_beak
+            beak = misc.imread('beak_small.jpg', flatten=True)
+            
+            # need to scale this to appropriate size - based on tube size
+#            beak = misc.imresize(beak, 0.3)
+            
+            
+            tube_big_gray = cv2.cvtColor(tube_big, cv2.COLOR_RGB2GRAY);
+            print('shapes', beak.shape, tube_big_gray.shape)
+            result = match_template(tube_big_gray, beak)
+            ij = np.unravel_index(np.argmax(result), result.shape)
+            x, y = ij[::-1]
+            cv2.circle(tube_big, center=(int(x) + beak.shape[1], int(y + beak.shape[0] / 2)), 
+                           radius=15, color=(0, 255, 0), thickness=5)
+            cv2.rectangle(tube_big, pt1=(x, y), pt2=(x + beak.shape[1], y + beak.shape[0]), 
+                          color=(0, 255, 0), thickness=5)
 
             # tube for measuring
             tube = frame[top:bot, left:]
@@ -110,29 +127,30 @@ def track_meniscus_for_clip(fname, tube_pos, tube_capacity,
                 tube_smooth = cv2.dilate(tube_smooth, kernel, iterations=1)
                 tube_smooth = cv2.erode(tube_smooth, kernel, iterations=1)
                 lines = cv2.HoughLinesP(tube_smooth, 1, np.pi / 180, 100, 100, 20) # 200 is num_votes
-                tube_motion_rgb = cv2.cvtColor(tube_motion, cv2.COLOR_GRAY2RGB) # just for drawing
                 
                 # only keep horizontal lines that intersect with white and end past meniscus
                 slope_thresh = 0.3
-                intersecting_thresh = 0.5
+                intersect_thresh = 0.5
                 starts, ends = [], []
-                if not lines is None:
-                    num_lines_possible = min(50, len(lines))
-                    for line_num in range(num_lines_possible):
-                        for x1,y1,x2,y2 in lines[line_num]:
-                            if x1 > x_meniscus or x2 > x_meniscus: # check if past meniscus
-                                slope = (y2 - y1) / (x2 - x1)
-                                if abs(slope) < slope_thresh: # check if line is near horizontal
-                                    # check for intersecting white
-                                    intersect_white = 0
-                                    # ......calculate white here............
-                                    if intersect_white > intersect_thresh: # check if intersect enough
-                                        starts.append([x1, x2])
-                                        ends.append([y1, y2])
-                                        if save_ims:
-                                            cv2.line(tube_motion_rgb, (x1, y1), (x2, y2), (0, 255, 0), 2)
+#                if not lines is None:
+#                    num_lines_possible = min(50, len(lines))
+#                    for line_num in range(num_lines_possible):
+#                        for x1,y1,x2,y2 in lines[line_num]:
+#                            if x1 > x_meniscus or x2 > x_meniscus: # check if past meniscus
+#                                slope = (y2 - y1) / (x2 - x1)
+#                                if abs(slope) < slope_thresh: # check if line is near horizontal
+#                                    # check for intersecting white
+#                                    intersect_white = 0
+#                                    # ......calculate white here............
+#                                    if intersect_white > intersect_thresh: # check if intersect enough
+#                                        starts.append([x1, x2])
+#                                        ends.append([y1, y2])
+#                                        if save_ims:
+#                                            cv2.line(tube_motion_rgb, (x1, y1), (x2, y2), (0, 255, 0), 2)
                 # cluster starts, ends
-                
+                starts, ends = np.array(starts), np.array(ends)
+
+
                 # remove outliers
                 
                 # recluster
@@ -140,13 +158,8 @@ def track_meniscus_for_clip(fname, tube_pos, tube_capacity,
                 # find end
                 
                 return 0                
-                
+            tube_motion_rgb = cv2.cvtColor(tube_motion, cv2.COLOR_GRAY2RGB) # just for drawing
             x_tongue = tongue_from_tube_motion(tube_motion, x_meniscus, x_tongue)
-            
-            
-            
-           
-            
             stats["tongue_tip"][frame_num] = x_tongue
 
 
@@ -165,10 +178,10 @@ def track_meniscus_for_clip(fname, tube_pos, tube_capacity,
                            radius=15, color=(255, 0, 0), thickness=5)
                 
 #                imageio.imwrite(oj(out_dir, 'frame_' + str(frame_num) + '.jpg'), frame_motion_rgb)
-#                imageio.imwrite(oj(out_dir, 'orig_frame_' + str(frame_num) + '.jpg'), frame)
+                imageio.imwrite(oj(out_dir, 'orig_frame_' + str(frame_num) + '.jpg'), frame)
 #                imageio.imwrite(oj(out_dir, 'tube_' + str(frame_num) + '.jpg'), tube)
-                imageio.imwrite(oj(out_dir, 'tube_motion_' + str(frame_num) + '.jpg'), tube_motion_rgb)
-#                imageio.imwrite(oj(out_dir, 'tube_big_' + str(frame_num) + '.jpg'), tube_big) 
+#                imageio.imwrite(oj(out_dir, 'tube_motion_' + str(frame_num) + '.jpg'), tube_motion_rgb)
+                imageio.imwrite(oj(out_dir, 'tube_big_' + str(frame_num) + '.jpg'), tube_big) 
 #                imageio.imwrite(oj(out_dir, 'tube_big_motion_' + str(frame_num) + '.jpg'), tube_big_motion_rgb)
                 pass
         
@@ -204,7 +217,7 @@ if __name__ == "__main__":
     tube_pos_a = (110, 1230, 260) # (top, left, bot)
     tube_pos_b = (84, 485, 126)
     tube_capacity = 300 # in mL
-    fname = oj(data_folder, 'side', 'a.mov')
+    fname = oj(data_folder, 'side', 'b.mov')
     out_dir = "out"
-    track_meniscus_for_clip(fname, tube_pos_a, tube_capacity, 
+    track_meniscus_for_clip(fname, tube_pos_b, tube_capacity, 
                             out_dir=out_dir, NUM_FRAMES=30, save_ims=True)
