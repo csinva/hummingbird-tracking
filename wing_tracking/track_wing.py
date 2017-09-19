@@ -37,12 +37,12 @@ def match_starts_with_ends(starts, ends):
     return s0, s1, e0, e1
 
 # draw two arrows onto the given image
-def plot_endpoints(masked_frame_rgb, start1, start2, end1, end2):
+def plot_endpoints(frame_motion_rgb, start1, start2, end1, end2):
         starts = [start1, start2]
         ends = [end1, end2]
         for i in range(2):
             c = (255, 0, 0) if i==0 else (0, 0, 255) # bottom arrow should be red
-            cv2.arrowedLine(masked_frame_rgb,
+            cv2.arrowedLine(frame_motion_rgb,
                            (int(starts[i][0]), int(starts[i][1])), # should point upwards
                            (int(ends[i][0]), int(ends[i][1])),
                            color=c, thickness=3)
@@ -70,21 +70,21 @@ def track_angle_for_clip(fname, out_dir="out", NUM_FRAMES=None, NUM_LINES=20, sa
     while(ret and frame_num < NUM_FRAMES):
         # read frame
         ret, frame = cap.read()
-        fgmask = fgbg.apply(frame)
-        masked_frame_rgb = cv2.cvtColor(fgmask,cv2.COLOR_GRAY2RGB)
+        frame_motion = fgbg.apply(frame)
+        frame_motion_rgb = cv2.cvtColor(frame_motion,cv2.COLOR_GRAY2RGB)
         
          # check if bird is drinking
-        def bird_is_present(masked_frame_rgb):
+        def bird_is_present(frame_motion_rgb):
             motion_thresh = 0
-            if np.sum(masked_frame_rgb>0) > motion_thresh * masked_frame_rgb.shape[0] * masked_frame_rgb.shape[1]:
+            if np.sum(frame_motion_rgb>0) > motion_thresh * frame_motion_rgb.shape[0] * frame_motion_rgb.shape[1]:
                 return True
             else:
                 return False
             
-        bird_present = bird_is_present(masked_frame_rgb)
+        bird_present = bird_is_present(frame_motion_rgb)
         if bird_present:
             # find lines
-            lines = cv2.HoughLinesP(fgmask, 1, np.pi / 180, 100, 100, 20) # 200 is num_votes
+            lines = cv2.HoughLinesP(frame_motion, 1, np.pi / 180, 100, 100, 20) # 200 is num_votes
             num_lines_possible = min(NUM_LINES, len(lines))
             starts = np.zeros((num_lines_possible, 2))
             ends = np.zeros((num_lines_possible, 2))
@@ -93,7 +93,7 @@ def track_angle_for_clip(fname, out_dir="out", NUM_FRAMES=None, NUM_LINES=20, sa
                     starts[line_num] = [x1, y1]
                     ends[line_num] = [x2, y2]
                     if save_ims:
-                        cv2.line(masked_frame_rgb, (x1,y1), (x2,y2), (0, 255, 0), 2)
+                        cv2.line(frame_motion_rgb, (x1,y1), (x2,y2), (0, 255, 0), 2)
 
 
             # find clusters
@@ -116,12 +116,12 @@ def track_angle_for_clip(fname, out_dir="out", NUM_FRAMES=None, NUM_LINES=20, sa
             bird_presents[frame_num] = bird_present
 
             if save_ims:
-                for im in (frame, masked_frame_rgb):
+                for im in (frame, frame_motion_rgb):
                     plot_endpoints(im, start0, start1, end0, end1)
                     cv2.putText(im, "theta: " + str(thetas[frame_num]), (0, 40), 
                                 cv2.FONT_HERSHEY_SIMPLEX, fontScale=1, color=(0, 255, 0))    
-                imageio.imwrite(oj(out_dir, 'frame_' + str(frame_num) + '.jpg'), masked_frame_rgb)
-                imageio.imwrite(oj(out_dir, 'frame_' + str(frame_num) + '_orig.jpg'), frame)
+                imageio.imwrite(oj(out_dir, 'frame_' + str(frame_num) + '_motion.jpg'), frame_motion_rgb)
+                imageio.imwrite(oj(out_dir, 'frame_' + str(frame_num) + '.jpg'), frame)
         frame_num += 1
 
     # release video
