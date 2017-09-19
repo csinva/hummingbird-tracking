@@ -113,14 +113,32 @@ def track_meniscus_for_clip(fname, tube_pos, tube_capacity,
                 tube_motion_rgb = cv2.cvtColor(tube_motion, cv2.COLOR_GRAY2RGB) # just for drawing
                 
                 # only keep horizontal lines that intersect with white and end past meniscus
-                tongue_thresh = 10
+                slope_thresh = 0.3
+                intersecting_thresh = 0.5
+                starts, ends = [], []
                 if not lines is None:
                     num_lines_possible = min(50, len(lines))
                     for line_num in range(num_lines_possible):
                         for x1,y1,x2,y2 in lines[line_num]:
-                            if save_ims:
-                                cv2.line(tube_motion_rgb, (x1,y1), (x2,y2), (0, 255, 0), 2)
-
+                            if x1 > x_meniscus or x2 > x_meniscus: # check if past meniscus
+                                slope = (y2 - y1) / (x2 - x1)
+                                if abs(slope) < slope_thresh: # check if line is near horizontal
+                                    # check for intersecting white
+                                    intersect_white = 0
+                                    # ......calculate white here............
+                                    if intersect_white > intersect_thresh: # check if intersect enough
+                                        starts.append([x1, x2])
+                                        ends.append([y1, y2])
+                                        if save_ims:
+                                            cv2.line(tube_motion_rgb, (x1, y1), (x2, y2), (0, 255, 0), 2)
+                # cluster starts, ends
+                
+                # remove outliers
+                
+                # recluster
+                
+                # find end
+                
                 return 0                
                 
             x_tongue = tongue_from_tube_motion(tube_motion, x_meniscus, x_tongue)
