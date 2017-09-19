@@ -18,7 +18,7 @@ def meniscus_from_tube_motion(tube_motion, x_meniscus_prev):
     conf = ave_ys[x_meniscus]
     conf_thresh = tube_motion.shape[0] / 4
     jump_thresh = tube_motion.shape[1] / 8
-    logging.info('tube_shape %s, threshes %.1f %.1f', tube_motion.shape, conf_thresh, jump_thresh)
+    logging.info('\ttube_shape %s, threshes %.1f %.1f', tube_motion.shape, conf_thresh, jump_thresh)
 
     # if confidence too low, don't change
     if conf < conf_thresh: # this needs to be tuned properly
@@ -68,7 +68,7 @@ def track_meniscus_for_clip(fname, tube_pos, tube_capacity,
         tube_height = bot - top
         top_big = max(top - tube_height, 0) # bounded by 0
         bot_big = min(bot + tube_height, frame.shape[0] - 1) # bounded by bottom of frame
-        left_big = max(0, left - (frame.shape[1] - left)) # bounded by 0
+        left_big = max(0, left - (frame.shape[1] - left) * 2) # bounded by 0
         tube_big = frame[top_big:bot_big, left_big:left]
         tube_big_motion = fgbg_tube_big.apply(tube_big)
         
@@ -86,24 +86,29 @@ def track_meniscus_for_clip(fname, tube_pos, tube_capacity,
             
             # track beak tip
             def beak_from_frame_motion(tube_big, x_beak):
-                return None
+                stats["beak_tip"][frame_num] = x_beak
+                beak = misc.imread('beak_small.jpg', flatten=True)
+
+                # need to scale this to appropriate size - based on tube size
+                tube_height = bot - top
+                template_height = beak.shape[0]
+                rescale = tube_height / 3 * template_height # want template_height to be about tube_height / 3
+                beak = misc.imresize(beak, 0.3)
+
+
+                tube_big_gray = cv2.cvtColor(tube_big, cv2.COLOR_RGB2GRAY);
+                logging.debug('\tbeak shape, tube_big_shape %s, %s', beak.shape, tube_big_gray.shape)
+                result = match_template(tube_big_gray, beak)
+                ij = np.unravel_index(np.argmax(result), result.shape)
+                x, y = ij[::-1]
+                print('x, y', x, y)
+                cv2.circle(tube_big, center=(int(x) + beak.shape[1], int(y + beak.shape[0] / 2)), 
+                               radius=15, color=(0, 255, 0), thickness=5)
+                cv2.rectangle(tube_big, pt1=(x, y), pt2=(x + beak.shape[1], y + beak.shape[0]), 
+                              color=(0, 255, 0), thickness=5)
+                return x + beak.shape[1]
             x_beak = beak_from_frame_motion(tube_big, x_beak)
-            stats["beak_tip"][frame_num] = x_beak
-            beak = misc.imread('beak_small.jpg', flatten=True)
             
-            # need to scale this to appropriate size - based on tube size
-#            beak = misc.imresize(beak, 0.3)
-            
-            
-            tube_big_gray = cv2.cvtColor(tube_big, cv2.COLOR_RGB2GRAY);
-            print('shapes', beak.shape, tube_big_gray.shape)
-            result = match_template(tube_big_gray, beak)
-            ij = np.unravel_index(np.argmax(result), result.shape)
-            x, y = ij[::-1]
-            cv2.circle(tube_big, center=(int(x) + beak.shape[1], int(y + beak.shape[0] / 2)), 
-                           radius=15, color=(0, 255, 0), thickness=5)
-            cv2.rectangle(tube_big, pt1=(x, y), pt2=(x + beak.shape[1], y + beak.shape[0]), 
-                          color=(0, 255, 0), thickness=5)
 
             # tube for measuring
             tube = frame[top:bot, left:]
