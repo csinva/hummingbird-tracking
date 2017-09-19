@@ -1,10 +1,8 @@
-import math
 import imageio
 import numpy as np
-import cv2
 from os.path import join as oj
-import os
-import subprocess
+import os, subprocess, cv2, math
+from skimage.feature import blob_dog, blob_log, blob_doh
 import matplotlib.pyplot as plt
 import matplotlib.colors as colors
 import matplotlib.cm as cmx
@@ -105,23 +103,74 @@ def track_meniscus_for_clip(fname, tube_pos, tube_capacity,
 
             # track tongue tip
             def tongue_from_tube_motion(tube_motion, x_meniscus, x_tongue):
-                return None
+                return None                
             x_tongue = tongue_from_tube_motion(tube_motion, x_meniscus, x_tongue)
+            masked_tube_rgb = cv2.cvtColor(tube_motion, cv2.COLOR_GRAY2RGB)   
             
             
-            lines = cv2.HoughLinesP(tube_motion, 1, np.pi / 180, 100, 100, 20) # 200 is num_votes    
-            masked_tube_rgb = cv2.cvtColor(tube_motion, cv2.COLOR_GRAY2RGB)
+            # Taking a matrix of size 5 as the kernel
+            kernel = np.ones((5, 5), np.uint8)
+            tube_motion = cv2.erode(tube_motion, kernel, iterations=1)
+            tube_motion = cv2.dilate(tube_motion, kernel, iterations=1)
+            tube_motion = cv2.erode(tube_motion, kernel, iterations=1)
+            tube_motion = cv2.dilate(tube_motion, kernel, iterations=1)
+            tube_motion = cv2.erode(tube_motion, kernel, iterations=1)
             
+            
+            
+            lines = cv2.HoughLinesP(tube_motion, 1, np.pi / 180, 100, 100, 20) # 200 is num_votes
             if not lines is None:
-                num_lines_possible = min(2, len(lines))
-                print('num_lines')
+                num_lines_possible = min(50, len(lines))
                 for line_num in range(num_lines_possible):
                     for x1,y1,x2,y2 in lines[line_num]:
                         if save_ims:
                             cv2.line(masked_tube_rgb, (x1,y1), (x2,y2), (0, 255, 0), 2)
+                        
+#            im2, contours, hierarchy = cv2.findContours(tube_motion, cv2.RETR_LIST, 4)
+#            
+#            
+#            # Setup SimpleBlobDetector parameters.
+#            params = cv2.SimpleBlobDetector_Params()
+#
+#            # Change thresholds
+#            params.minThreshold = -1;
+#            params.maxThreshold = 256;
+#            params.filterByInertia = False
+#            params.filterByConvexity = False
+#            detector = cv2.SimpleBlobDetector_create(params)
+#            keypoints = detector.detect(tube_motion)
+
+#            mask = cv2.erode(mask, element, iterations = 1)
+
+                        
+            # Draw detected blobs as red circles.
+            # cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS ensures the size of the circle corresponds to the size of blob
+#            masked_tube_rgb = cv2.drawKeypoints(masked_tube_rgb, keypoints, np.array([]), (0,0,255), cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
             
+#            blobs_doh = blob_dog(tube_motion, max_sigma=30, threshold=.01)
+#            for blob in blobs_doh:
+#                y, x, r = blob
+#                cv2.circle(masked_tube_rgb, (int(x), int(y)) , int(r), color=(0, 255, 255))
+
+
+            
+#            masked_tube_rgb = cv2.cvtColor(tube_motion, cv2.COLOR_GRAY2RGB)               
+#            cv2.drawContours(masked_tube_rgb, contours, -1, (0,255,0), 3)
+#            for cnt in contours:
+#            try:
+#                cnt = contours
+#            cnt = contours[0]
+            
+#                x,y,w,h = cv2.boundingRect(cnt)
+#                cv2.rectangle(masked_tube_rgb,(x,y),(x+w,y+h),(255,0,0),2)
+    #            cv2.ellipse(masked_tube_rgb,ellipse,(0,255,0),2)
+#            except:
+#                print('skipping', frame_num)
+            # maximum x s.t. tube_motion[x] == 255
+#            x_tongue = np.argmax(tube_motion, axis)
             
             stats["tongue_tip"][frame_num] = x_tongue
+
 
             # save
             if save_ims:
@@ -129,7 +178,6 @@ def track_meniscus_for_clip(fname, tube_pos, tube_capacity,
                 frame_motion = fgbg.apply(frame)
                 masked_frame_rgb = cv2.cvtColor(frame_motion, cv2.COLOR_GRAY2RGB)
                 tube_big_motion_rgb = cv2.cvtColor(tube_big_motion, cv2.COLOR_GRAY2RGB)
-                
 
                 
                 # draw things
@@ -140,7 +188,7 @@ def track_meniscus_for_clip(fname, tube_pos, tube_capacity,
                 
 #                imageio.imwrite(oj(out_dir, 'frame_' + str(frame_num) + '.jpg'), masked_frame_rgb)
 #                imageio.imwrite(oj(out_dir, 'orig_frame_' + str(frame_num) + '.jpg'), frame)
-                imageio.imwrite(oj(out_dir, 'tube_' + str(frame_num) + '.jpg'), tube)
+#                imageio.imwrite(oj(out_dir, 'tube_' + str(frame_num) + '.jpg'), tube)
                 imageio.imwrite(oj(out_dir, 'tube_motion_' + str(frame_num) + '.jpg'), masked_tube_rgb)
 #                imageio.imwrite(oj(out_dir, 'tube_big_' + str(frame_num) + '.jpg'), tube_big) 
 #                imageio.imwrite(oj(out_dir, 'tube_big_motion_' + str(frame_num) + '.jpg'), tube_big_motion_rgb)
@@ -181,4 +229,4 @@ if __name__ == "__main__":
     fname = oj(data_folder, 'side', 'a.mov')
     out_dir = "out"
     track_meniscus_for_clip(fname, tube_pos_a, tube_capacity, 
-                            out_dir=out_dir, NUM_FRAMES=25, save_ims=True)
+                            out_dir=out_dir, NUM_FRAMES=30, save_ims=True)
