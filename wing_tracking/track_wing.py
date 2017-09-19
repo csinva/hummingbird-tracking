@@ -48,9 +48,6 @@ def plot_endpoints(masked_frame_rgb, start1, start2, end1, end2):
                            color=c, thickness=3)
 
 # given a video filename and some parameters, calculates the angle between wings and saves to png and csv
-# note: output is unpredictable when bird is not in frame
-# note: bird must be horizontal facing left
-# note: since the algorithm uses motion, the first and last data point should be ignored
 # output: theta is the angle measure from one wing, around the back of the bird, to the other wing
 def track_angle_for_clip(fname, out_dir="out", NUM_FRAMES=None, NUM_LINES=20, save_ims=False):    
     print('tracking', fname)
