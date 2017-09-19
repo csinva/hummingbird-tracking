@@ -30,7 +30,7 @@ def meniscus_from_tube_motion(tube_motion, x_meniscus_prev):
         logging.info('\tchange too large %.1f %.1f', abs(x_meniscus - x_meniscus_prev), jump_thresh)
         x_meniscus = x_meniscus_prev
 
-    # if decreased, don't change
+    # if decreased, don't change - must take this out for receding
     if x_meniscus < x_meniscus_prev:
         logging.info('\tdecreased')
         x_meniscus = x_meniscus_prev
@@ -79,6 +79,7 @@ def track_meniscus_for_clip(fname, tube_pos, tube_capacity,
                 return True
             else:
                 return False
+            
         bird_drinking = bird_is_drinking(tube_big_motion)
         stats["is_drinking"][frame_num] = bird_drinking
         if bird_drinking:
@@ -106,8 +107,14 @@ def track_meniscus_for_clip(fname, tube_pos, tube_capacity,
             def tongue_from_tube_motion(tube_motion, x_meniscus, x_tongue):
                 return None
             x_tongue = tongue_from_tube_motion(tube_motion, x_meniscus, x_tongue)
+            
+            
+            lines = cv2.HoughLinesP(tube_motion, 1, np.pi / 180, 100, 100, 20) # 200 is num_votes    
+            masked_tube_rgb = cv2.cvtColor(tube_motion, cv2.COLOR_GRAY2RGB)
+            
             if not lines is None:
                 num_lines_possible = min(2, len(lines))
+                print('num_lines')
                 for line_num in range(num_lines_possible):
                     for x1,y1,x2,y2 in lines[line_num]:
                         if save_ims:
@@ -122,7 +129,7 @@ def track_meniscus_for_clip(fname, tube_pos, tube_capacity,
                 frame_motion = fgbg.apply(frame)
                 masked_frame_rgb = cv2.cvtColor(frame_motion, cv2.COLOR_GRAY2RGB)
                 tube_big_motion_rgb = cv2.cvtColor(tube_big_motion, cv2.COLOR_GRAY2RGB)
-                masked_tube_rgb = cv2.cvtColor(tube_motion, cv2.COLOR_GRAY2RGB)
+                
 
                 
                 # draw things
@@ -138,7 +145,11 @@ def track_meniscus_for_clip(fname, tube_pos, tube_capacity,
 #                imageio.imwrite(oj(out_dir, 'tube_big_' + str(frame_num) + '.jpg'), tube_big) 
 #                imageio.imwrite(oj(out_dir, 'tube_big_motion_' + str(frame_num) + '.jpg'), tube_big_motion_rgb)
                 pass
-
+        
+        # bird is not drinking
+        else:
+            x_meniscus, x_tongue, x_beak = 0, 0, 0
+            
         # read next frame
         frame_num += 1
         ret, frame = cap.read()
@@ -163,7 +174,7 @@ def track_meniscus_for_clip(fname, tube_pos, tube_capacity,
 if __name__ == "__main__":
     # hyperparams - denoising_param, conf_thresh, jump_thresh
     logging.basicConfig(stream=sys.stdout, level=logging.INFO, format = '%(message)s')
-    data_folder = '/Users/chandan/drive/research/hummingbird_tracking/data'
+    data_folder = '/Users/chandan/drive/research/hummingbird_tracking/tracking_code/data'
     tube_pos_a = (110, 1230, 260) # (top, left, bot)
     tube_pos_b = (84, 485, 126)
     tube_capacity = 300 # in mL
