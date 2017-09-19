@@ -66,6 +66,7 @@ def track_angle_for_clip(fname, out_dir="out", NUM_FRAMES=None, NUM_LINES=20, sa
     km_starts = KMeans(n_clusters=2, random_state=0)
     km_ends = KMeans(n_clusters=2, random_state=0)
     thetas = np.zeros((NUM_FRAMES, 1)) # stores the data
+    bird_presents = np.zeros((NUM_FRAMES, 1)) # stores the data
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
     
@@ -75,44 +76,55 @@ def track_angle_for_clip(fname, out_dir="out", NUM_FRAMES=None, NUM_LINES=20, sa
         fgmask = fgbg.apply(frame)
         masked_frame_rgb = cv2.cvtColor(fgmask,cv2.COLOR_GRAY2RGB)
         
-        # find lines
-        lines = cv2.HoughLinesP(fgmask, 1, np.pi / 180, 100, 100, 20) # 200 is num_votes
-        num_lines_possible = min(NUM_LINES, len(lines))
-        starts = np.zeros((num_lines_possible, 2))
-        ends = np.zeros((num_lines_possible, 2))
-        for line_num in range(num_lines_possible):
-            for x1,y1,x2,y2 in lines[line_num]:
-                starts[line_num] = [x1, y1]
-                ends[line_num] = [x2, y2]
-                if save_ims:
-                    cv2.line(masked_frame_rgb, (x1,y1), (x2,y2), (0, 255, 0), 2)
-                
+         # check if bird is drinking
+        def bird_is_present(masked_frame_rgb):
+            motion_thresh = 0
+            if np.sum(masked_frame_rgb>0) > motion_thresh * masked_frame_rgb.shape[0] * masked_frame_rgb.shape[1]:
+                return True
+            else:
+                return False
+            
+        bird_present = bird_is_present(masked_frame_rgb)
+        if bird_present:
+            # find lines
+            lines = cv2.HoughLinesP(fgmask, 1, np.pi / 180, 100, 100, 20) # 200 is num_votes
+            num_lines_possible = min(NUM_LINES, len(lines))
+            starts = np.zeros((num_lines_possible, 2))
+            ends = np.zeros((num_lines_possible, 2))
+            for line_num in range(num_lines_possible):
+                for x1,y1,x2,y2 in lines[line_num]:
+                    starts[line_num] = [x1, y1]
+                    ends[line_num] = [x2, y2]
+                    if save_ims:
+                        cv2.line(masked_frame_rgb, (x1,y1), (x2,y2), (0, 255, 0), 2)
 
-        # find clusters
-        km_starts.fit(starts)
-        km_ends.fit(ends)
 
-        # start should match up with end that is closest to it
-        start0, start1, end0, end1 = match_starts_with_ends(km_starts.cluster_centers_, km_ends.cluster_centers_)
+            # find clusters
+            km_starts.fit(starts)
+            km_ends.fit(ends)
 
-        # calculate theta from mean_starts, mean_ends (NUM_FRAMES x TOP_OR_BOT x X_OR_Y)
-        x,y = 0,1
-        dy_bot = end0[y] - start0[y] # neg
-        dx_bot = end0[x] - start0[x] # pos or neg
-        dy_top = end1[y] - start1[y] # pos
-        dx_top = end1[x] - start1[x] # pos or neg
+            # start should match up with end that is closest to it
+            start0, start1, end0, end1 = match_starts_with_ends(km_starts.cluster_centers_, km_ends.cluster_centers_)
 
-        theta_bot = 180 - abs(np.arctan2(dy_bot, dx_bot) * 180 / np.pi)
-        theta_top = abs(np.arctan2(dy_top, dx_top) * 180 / np.pi)
-        thetas[frame_num] = theta_bot + theta_top
-        
-        if save_ims:
-            for im in (frame, masked_frame_rgb):
-                plot_endpoints(im, start0, start1, end0, end1)
-                cv2.putText(im, "theta: " + str(thetas[frame_num]), (0, 40), 
-                            cv2.FONT_HERSHEY_SIMPLEX, fontScale=1, color=(0, 255, 0))    
-            imageio.imwrite(oj(out_dir, 'frame_' + str(frame_num) + '.jpg'), masked_frame_rgb)
-            imageio.imwrite(oj(out_dir, 'frame_' + str(frame_num) + '_orig.jpg'), frame)
+            # calculate theta from mean_starts, mean_ends (NUM_FRAMES x TOP_OR_BOT x X_OR_Y)
+            x,y = 0,1
+            dy_bot = end0[y] - start0[y] # neg
+            dx_bot = end0[x] - start0[x] # pos or neg
+            dy_top = end1[y] - start1[y] # pos
+            dx_top = end1[x] - start1[x] # pos or neg
+
+            theta_bot = 180 - abs(np.arctan2(dy_bot, dx_bot) * 180 / np.pi)
+            theta_top = abs(np.arctan2(dy_top, dx_top) * 180 / np.pi)
+            thetas[frame_num] = theta_bot + theta_top
+            bird_presents[frame_num] = bird_present
+
+            if save_ims:
+                for im in (frame, masked_frame_rgb):
+                    plot_endpoints(im, start0, start1, end0, end1)
+                    cv2.putText(im, "theta: " + str(thetas[frame_num]), (0, 40), 
+                                cv2.FONT_HERSHEY_SIMPLEX, fontScale=1, color=(0, 255, 0))    
+                imageio.imwrite(oj(out_dir, 'frame_' + str(frame_num) + '.jpg'), masked_frame_rgb)
+                imageio.imwrite(oj(out_dir, 'frame_' + str(frame_num) + '_orig.jpg'), frame)
         frame_num += 1
 
     # release video
@@ -126,10 +138,11 @@ def track_angle_for_clip(fname, out_dir="out", NUM_FRAMES=None, NUM_LINES=20, sa
     plt.ylabel('Theta')
     plt.savefig(oj(out_dir, 'thetas.png'))
     np.savetxt(oj(out_dir, 'thetas.csv'), thetas, fmt="%3.2f", delimiter=',')
+    np.savetxt(oj(out_dir, 'bird_present.csv'), bird_presents, fmt="%3.2f", delimiter=',')
     print('succesfully completed')
 
 if __name__=="__main__":
-    data_folder = '/Users/chandan/drive/research/hummingbird_tracking/data'
+    data_folder = '/Users/chandan/drive/research/hummingbird_tracking/tracking_code/data'
     fname = oj(data_folder, 'top', 'clip_full_fit.mp4')
     out_dir = "out"
     track_angle_for_clip(fname, out_dir=out_dir, NUM_FRAMES=20, save_ims=False) # NUM_FRAMES=20
