@@ -9,7 +9,8 @@ import matplotlib.pyplot as plt
 import matplotlib.colors as colors
 import matplotlib.cm as cmx
 from sklearn.cluster import KMeans
-
+import seaborn as sns
+import pandas as pd
 
 # starts and ends both 2x2
 # returns them in a specific order (see below)
@@ -172,16 +173,18 @@ if __name__ == "__main__":
         theta_gt = calc_theta(start0, start1, end0, end1)
         thetas_gt.append(theta_gt)
 
+    print('thetas.shape', thetas.shape, 'o')
+    # smooth_data = pd.rolling_mean(thetas, 3, center=True)
+    smooth_data = thetas
+    print('thetas2.shape', smooth_data.shape)
+    # sns.regplot(np.array(frame_offsets), np.array(thetas_gt), lowess=True)
+    # sns.pointplot(range(len(thetas)), np.array(thetas))
     plt.plot(frame_offsets, thetas_gt, 'o')
-    plt.plot(thetas, 'o')
-    plt.show()
-    # start should match up with end that is closest to it
-    # start0, start1, end0, end1 = match_starts_with_ends(km_starts.cluster_centers_, km_ends.cluster_centers_)
+    plt.plot(smooth_data)
 
-    # calculate theta
-    #
 
     print(len(slices))
 
-    # plt.show()
+    plt.show()
     # track_angle_for_clip(fname, labels, out_dir=out_dir, save_ims=True)  # NUM_FRAMES=20
+
