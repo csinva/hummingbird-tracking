@@ -90,6 +90,8 @@ def track_angle_for_clip(fname, vid_id, out_dir="out", num_frames=None, num_line
         # read frame
         ret, frame = cap.read()
         frame_motion = fgbg.apply(frame)
+        frame_motion[frame_motion == 255] = 0
+        # print('unique', np.unique(frame_motion))
         frame_motion_rgb = cv2.cvtColor(frame_motion, cv2.COLOR_GRAY2RGB)
         if frame_num % 1000 == 0:
             print('frame_num', frame_num)
@@ -102,7 +104,8 @@ def track_angle_for_clip(fname, vid_id, out_dir="out", num_frames=None, num_line
             else:
                 return False
 
-        if bird_is_present(frame_motion_rgb) and frame_num > 0:
+        if 6981 < frame_num < 7200 \
+                and bird_is_present(frame_motion_rgb) and frame_num > 0:  # TODO: REMOVE THIS:
             try:
                 # find lines
                 lines = cv2.HoughLinesP(frame_motion, 1, np.pi / 180, 100, 100, 20)  # 200 is num_votes
@@ -121,11 +124,13 @@ def track_angle_for_clip(fname, vid_id, out_dir="out", num_frames=None, num_line
                 km_ends.fit(ends)
 
                 # start should match up with end that is closest to it
-                start0, start1, end0, end1 = match_starts_with_ends(km_starts.cluster_centers_, km_ends.cluster_centers_)
+                start0, start1, end0, end1 = match_starts_with_ends(km_starts.cluster_centers_,
+                                                                    km_ends.cluster_centers_)
 
                 # calculate theta
                 thetas[frame_num] = calc_theta(start0, start1, end0, end1)
 
+                # set bird to present
                 bird_presents[frame_num] = 1
 
                 if save_ims:
@@ -134,7 +139,7 @@ def track_angle_for_clip(fname, vid_id, out_dir="out", num_frames=None, num_line
                         cv2.putText(im, "theta: " + str(thetas[frame_num]), (0, 40),
                                     cv2.FONT_HERSHEY_SIMPLEX, fontScale=1, color=(0, 255, 0))
                     imageio.imwrite(oj(out_dir, 'frame_' + str(frame_num) + '_motion.jpg'), frame_motion_rgb)
-                    imageio.imwrite(oj(out_dir, 'frame_' + str(frame_num) + '.jpg'), frame)
+                    # imageio.imwrite(oj(out_dir, 'frame_' + str(frame_num) + '.jpg'), frame)
             except:
                 print('error')
         frame_num += 1
@@ -159,4 +164,4 @@ if __name__ == "__main__":
     vid_id = '0075'  # 0075
     fname = oj(data_folder, 'top', 'PIC_' + vid_id + '.MP4')
     out_dir = "out"
-    track_angle_for_clip(fname, vid_id, out_dir=out_dir, num_frames=8000, save_ims=False)  # NUM_FRAMES=20
+    track_angle_for_clip(fname, vid_id, out_dir=out_dir, num_frames=8000, save_ims=True)  # NUM_FRAMES=20

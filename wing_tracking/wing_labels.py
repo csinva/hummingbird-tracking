@@ -184,7 +184,9 @@ if __name__ == "__main__":
 
 
     print(len(slices))
-
+    plt.xlim([6981, 7030])
+    plt.grid(True)
+    plt.savefig('out/thetas_comp.png')
     plt.show()
     # track_angle_for_clip(fname, labels, out_dir=out_dir, save_ims=True)  # NUM_FRAMES=20
 
