@@ -11,6 +11,8 @@ import matplotlib.cm as cmx
 from sklearn.cluster import KMeans
 import seaborn as sns
 import pandas as pd
+import util
+
 
 # starts and ends both 2x2
 # returns them in a specific order (see below)
@@ -51,71 +53,24 @@ def calc_theta(start0, start1, end0, end1):
     theta_top = abs(np.arctan2(dy_top, dx_top) * 180 / np.pi)
     return theta_bot + theta_top
 
-# draw two arrows onto the given image
-def plot_endpoints(frame_motion_rgb, start1, start2, end1, end2):
-    starts = [start1, start2]
-    ends = [end1, end2]
-    for i in range(2):
-        c = (255, 0, 0) if i == 0 else (0, 0, 255)  # bottom arrow should be red
-        cv2.arrowedLine(frame_motion_rgb,
-                        (int(starts[i][0]), int(starts[i][1])),  # should point upwards
-                        (int(ends[i][0]), int(ends[i][1])),
-                        color=c, thickness=3)
-
 
 # given a video filename and some parameters, calculates the angle between wings and saves to png and csv
 # output: theta is the angle measure from one wing, around the back of the bird, to the other wing
-def track_angle_for_clip(fname, labels, out_dir="out", NUM_FRAMES=None, NUM_LINES=20, save_ims=False):
+def visualize_labels(fname, labels, out_dir="out"):
     print('tracking', fname)
     cap = cv2.VideoCapture(fname)
-    fgbg = cv2.createBackgroundSubtractorMOG2()
-
-    # initialize loop
-    if NUM_FRAMES is None:
-        NUM_FRAMES = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
-        print('num_frames', NUM_FRAMES)
     ret = True
     frame_num = 0
-    km_starts = KMeans(n_clusters=2, random_state=0)
-    km_ends = KMeans(n_clusters=2, random_state=0)
-    thetas = np.zeros((NUM_FRAMES, 1))  # stores the data
-    bird_presents = np.zeros((NUM_FRAMES, 1))  # stores the data
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
     offset = 6981 - 1
-    while (ret and frame_num < offset):
-        # ret, frame = cap.read()
+    while ret and frame_num < offset:
         cap.grab()
         frame_num += 1
-        # print(frame_num)
-    while (ret and frame_num < offset + 30):
+
+    while ret and frame_num < offset + 30:
         # read frame
         ret, frame = cap.read()
-        frame_motion = fgbg.apply(frame)
-        frame_motion_rgb = cv2.cvtColor(frame_motion, cv2.COLOR_GRAY2RGB)
-
-        # find lines
-        lines = cv2.HoughLinesP(frame_motion, 1, np.pi / 180, 100, 100, 20)  # 200 is num_votes
-        num_lines_possible = min(NUM_LINES, len(lines))
-        starts = np.zeros((num_lines_possible, 2))
-        ends = np.zeros((num_lines_possible, 2))
-        for line_num in range(num_lines_possible):
-            for x1, y1, x2, y2 in lines[line_num]:
-                starts[line_num] = [x1, y1]
-                ends[line_num] = [x2, y2]
-                # if save_ims:
-                # cv2.line(frame_motion_rgb, (x1, y1), (x2, y2), (0, 255, 0), 2)
-
-        # find clusters
-        km_starts.fit(starts)
-        km_ends.fit(ends)
-
-        # start should match up with end that is closest to it
-        start0, start1, end0, end1 = match_starts_with_ends(km_starts.cluster_centers_, km_ends.cluster_centers_)
-
-        # calculate theta
-        thetas[frame_num] = calc_theta(start0, start1, end0, end1)
-
 
         if frame_num - offset in labels[:, -1]:
             idxs = labels[:, -1] == frame_num - offset
@@ -129,7 +84,7 @@ def track_angle_for_clip(fname, labels, out_dir="out", NUM_FRAMES=None, NUM_LINE
                 cv2.circle(frame, center=(xs[1], ys[1]), color=(255, 255, 0), radius=15)
                 cv2.circle(frame, center=(xs[2], ys[2]), color=(0, 0, 255), radius=15)
                 cv2.circle(frame, center=(xs[3], ys[3]), color=(0, 255, 0), radius=15)
-                imageio.imwrite(oj(out_dir, 'frame_' + str(frame_num) + '.jpg'), frame)
+                imageio.imwrite(oj(out_dir, 'frame_' + str(frame_num) + '_label.jpg'), frame)
 
         frame_num += 1
 
@@ -137,23 +92,13 @@ def track_angle_for_clip(fname, labels, out_dir="out", NUM_FRAMES=None, NUM_LINE
     cap.release()
     cv2.destroyAllWindows()
 
-    # saving
-    fig = plt.figure(figsize=(14, 6))
-    plt.plot(range(NUM_FRAMES), thetas, 'o')
-    plt.xlabel('Frame number')
-    plt.ylabel('Theta')
-    plt.savefig(oj(out_dir, 'thetas.png'))
-    np.savetxt(oj(out_dir, 'thetas.csv'), thetas, fmt="%3.2f", delimiter=',')
-    np.savetxt(oj(out_dir, 'bird_present.csv'), bird_presents, fmt="%3.2f", delimiter=',')
-    print('succesfully completed')
-
 
 if __name__ == "__main__":
     data_folder = '/Users/chandan/drive/research/hummingbird_tracking/tracking_code/data'
     fname = oj(data_folder, 'top', 'PIC_0075.mp4')
     start_frame = 6981
     fname_gt = oj(data_folder, 'top', 'labels', 'Pic_75.' + str(start_frame) + '.txt')
-    offset = 6981
+    offset = start_frame - 1
     labels = np.loadtxt(fname_gt, skiprows=True).astype(np.int32)
     print(labels[0:3])
     print(labels.shape)
@@ -162,8 +107,8 @@ if __name__ == "__main__":
     thetas = np.loadtxt('out/thetas_0075.csv')
     print('thetas.shape', thetas.shape)
 
-    slices = [labels[int(i):int(i)+4, 1:4] for i in np.arange(0, labels.shape[0]/4, 4)]
-    frame_offsets = [labels[int(i), 3]+ offset - 1 for i in np.arange(0, labels.shape[0] / 4, 4)]
+    slices = [labels[int(i):int(i) + 4, 1:4] for i in np.arange(0, labels.shape[0] / 4, 4)]
+    frame_offsets = [labels[int(i), 3] + offset for i in np.arange(0, labels.shape[0] / 4, 4)]
     print('len slices', len(slices))
     thetas_gt = []
     for slice in slices:
@@ -175,13 +120,17 @@ if __name__ == "__main__":
 
     print('thetas.shape', thetas.shape, 'o')
     # smooth_data = pd.rolling_mean(thetas, 3, center=True)
+    thetas[thetas == 0] = np.nan
     smooth_data = thetas
     print('thetas2.shape', smooth_data.shape)
-    # sns.regplot(np.array(frame_offsets), np.array(thetas_gt), lowess=True)
-    # sns.pointplot(range(len(thetas)), np.array(thetas))
-    plt.plot(frame_offsets, thetas_gt, 'o')
-    plt.plot(smooth_data)
+    fig, ax = plt.subplots(1, 1)
 
+    plt.plot(smooth_data, 'o', alpha=0.5, color=util.cs[0])
+    plt.plot(smooth_data, alpha=0.25, color=util.cs[0])
+    plt.plot(frame_offsets, thetas_gt, 'o', color=util.cs[1])
+    import matplotlib.ticker as ticker
+
+    ax.xaxis.set_major_locator(ticker.MultipleLocator(4))
 
     print(len(slices))
     plt.xlim([6981, 7030])
@@ -189,4 +138,3 @@ if __name__ == "__main__":
     plt.savefig('out/thetas_comp.png')
     plt.show()
     # track_angle_for_clip(fname, labels, out_dir=out_dir, save_ims=True)  # NUM_FRAMES=20
-
