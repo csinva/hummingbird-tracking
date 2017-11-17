@@ -1,4 +1,6 @@
 import math
+from math import degrees
+from math import radians
 import imageio
 import numpy as np
 import cv2
@@ -104,44 +106,96 @@ def track_angle_for_clip(fname, vid_id, out_dir="out", num_frames=None, num_line
             else:
                 return False
 
-        if 6981 < frame_num < 7200 \
-                and bird_is_present(frame_motion_rgb) and frame_num > 0:  # TODO: REMOVE THIS:
-            try:
-                # find lines
-                lines = cv2.HoughLinesP(frame_motion, 1, np.pi / 180, 100, 100, 20)  # 200 is num_votes
-                num_lines_possible = min(num_lines, len(lines))
-                starts = np.zeros((num_lines_possible, 2))
-                ends = np.zeros((num_lines_possible, 2))
-                for line_num in range(num_lines_possible):
-                    for x1, y1, x2, y2 in lines[line_num]:
-                        starts[line_num] = [x1, y1]
-                        ends[line_num] = [x2, y2]
-                        if save_ims:
-                            cv2.line(frame_motion_rgb, (x1, y1), (x2, y2), (0, 255, 0), 2)
+        if bird_is_present(
+                frame_motion_rgb) and 0 < frame_num < 25:  # TODO: REMOVE THIS: #6981 < frame_num < 7200 and \
 
-                # find clusters
-                km_starts.fit(starts)
-                km_ends.fit(ends)
+            # try:
+            # find lines
+            lines = cv2.HoughLinesP(frame_motion, 1, np.pi / 180, 100, 100, 20)  # 200 is num_votes
+            num_lines_possible = min(num_lines, len(lines))
+            starts = np.zeros((num_lines_possible, 2)).astype(np.int32)
+            ends = np.zeros((num_lines_possible, 2)).astype(np.int32)
+            for line_num in range(num_lines_possible):
+                for x1, y1, x2, y2 in lines[line_num]:
+                    starts[line_num] = [x1, y1]
+                    ends[line_num] = [x2, y2]
+                    if y2 > y1:  # make sure starts below ends (larger y vals)
+                        starts[line_num] = [x2, y2]
+                        ends[line_num] = [x1, y1]
+                        # if save_ims:
+                        #     cv2.line(frame_motion_rgb, (x1, y1), (x2, y2), (0, 255, 0, 5), 2)
 
-                # start should match up with end that is closest to it
-                start0, start1, end0, end1 = match_starts_with_ends(km_starts.cluster_centers_,
-                                                                    km_ends.cluster_centers_)
+            # find clusters, note starts.y < ends.y
+            km_starts.fit(starts[:, 1].reshape(-1, 1))  # only cluster by y values
+            wing_nums = km_starts.predict(starts[:, 1].reshape(-1, 1))
 
-                # calculate theta
-                thetas[frame_num] = calc_theta(start0, start1, end0, end1)
+            if km_starts.cluster_centers_[0] < km_starts.cluster_centers_[1]:  # 0 cluster should be bot
+                wing_nums = 1 - wing_nums
+            print(wing_nums)
+            # calculate average angle for each
+            bot_wing_starts = starts[wing_nums == 0]
+            bot_wing_ends = ends[wing_nums == 0]
+            top_wing_starts = starts[wing_nums == 1]
+            top_wing_ends = ends[wing_nums == 1]
 
-                # set bird to present
-                bird_presents[frame_num] = 1
+            print(starts.shape, bot_wing_starts.shape, top_wing_starts.shape)
 
-                if save_ims:
-                    for im in (frame, frame_motion_rgb):
-                        plot_endpoints(im, start0, start1, end0, end1)
-                        cv2.putText(im, "theta: " + str(thetas[frame_num]), (0, 40),
-                                    cv2.FONT_HERSHEY_SIMPLEX, fontScale=1, color=(0, 255, 0))
-                    imageio.imwrite(oj(out_dir, 'frame_' + str(frame_num) + '_motion.jpg'), frame_motion_rgb)
-                    # imageio.imwrite(oj(out_dir, 'frame_' + str(frame_num) + '.jpg'), frame)
-            except:
-                print('error')
+            # calculate theta from mean_starts, mean_ends (NUM_FRAMES x TOP_OR_BOT x X_OR_Y)
+            def calc_theta_averaging_slopes(bot_wing_starts, bot_wing_ends, top_wing_starts, top_wing_ends):
+                x, y = 0, 1
+                dy_bots, dx_bots, dy_tops, dx_tops = [], [], [], []
+                for i in range(len(bot_wing_starts)):
+                    dy_bots.append(bot_wing_ends[i, y] - bot_wing_starts[i, y])
+                    dx_bots.append(bot_wing_ends[i, x] - bot_wing_starts[i, x])
+                    cv2.line(frame_motion_rgb, (bot_wing_starts[i, x], bot_wing_starts[i, y]),
+                             (bot_wing_ends[i, x], bot_wing_ends[i, y]),
+                             (50, 0, 0, 100), 2)
+                for i in range(len(top_wing_starts)):
+                    dy_tops.append(top_wing_ends[i, y] - top_wing_starts[i, y])
+                    dx_tops.append(top_wing_ends[i, x] - top_wing_starts[i, x])
+                    cv2.line(frame_motion_rgb, (top_wing_starts[i, x], top_wing_starts[i, y]),
+                             (top_wing_ends[i, x], top_wing_ends[i, y]),
+                             (0, 0, 50, 100), 2)
+                theta_bots = [180 - degrees(abs(np.arctan2(dy_bot, dx_bot)))
+                              for dy_bot, dx_bot in zip(dy_bots, dx_bots)]
+                theta_tops = [degrees(abs(np.arctan2(dy_top, dx_top)))
+                              for dy_top, dx_top in zip(dy_tops, dx_tops)]
+                theta_bot = sum(theta_bots) / len(theta_bots)  # TODO: weight by length of line
+                theta_top = sum(theta_tops) / len(theta_tops)
+                return theta_bot, theta_top, theta_bot + theta_top
+
+            theta_bot, theta_top, thetas[frame_num] = calc_theta_averaging_slopes(bot_wing_starts, bot_wing_ends,
+                                                                                  top_wing_starts, top_wing_ends)
+
+            # draw the rest of the results
+            ## start should match up with end that is closest to it
+            km_starts.fit(starts)
+            km_ends.fit(ends)
+            start_bot, start_top, end_bot, end_top = match_starts_with_ends(km_starts.cluster_centers_,
+                                                                            km_ends.cluster_centers_)
+
+            ## recalculate lines
+            dvec_bot = (-1 * math.cos(radians(theta_bot)), -1 * math.sin(radians(theta_bot)))
+            # end_bot = tuple((s + e) / 2 for s, e in zip(start_bot, end_bot))
+            start_bot = end_bot + tuple(d / math.hypot(dvec_bot[0], dvec_bot[1]) * 60 for d in dvec_bot)
+            dvec_top = (math.cos(radians(theta_top)), -1 * math.sin(radians(theta_top)))
+            end_top = start_top + tuple(d / math.hypot(dvec_top[0], dvec_top[1]) * 60 for d in dvec_top)
+
+            # calculate theta from mean endpoints
+            # thetas[frame_num] = calc_theta(start0, start1, end0, end1)
+
+            # set bird to present
+            bird_presents[frame_num] = 1
+
+            if save_ims:
+                for im in (frame, frame_motion_rgb):
+                    plot_endpoints(im, start_bot, start_top, end_bot, end_top)
+                    cv2.putText(im, "theta: %g %g %g" % (thetas[frame_num], theta_bot, theta_top), (0, 40),
+                                cv2.FONT_HERSHEY_SIMPLEX, fontScale=0.5, color=(0, 255, 0))
+                imageio.imwrite(oj(out_dir, 'frame_' + str(frame_num) + '_motion.jpg'), frame_motion_rgb)
+                # imageio.imwrite(oj(out_dir, 'frame_' + str(frame_num) + '.jpg'), frame)
+                # except Exception as e:
+                #     print('error', e)
         frame_num += 1
 
     # release video
@@ -161,7 +215,7 @@ def track_angle_for_clip(fname, vid_id, out_dir="out", num_frames=None, num_line
 
 if __name__ == "__main__":
     data_folder = '/Users/chandan/drive/research/hummingbird_tracking/tracking_code/data'
-    vid_id = '0075'  # 0075
+    vid_id = 'good'  # 0075
     fname = oj(data_folder, 'top', 'PIC_' + vid_id + '.MP4')
     out_dir = "out"
     track_angle_for_clip(fname, vid_id, out_dir=out_dir, num_frames=8000, save_ims=True)  # NUM_FRAMES=20
