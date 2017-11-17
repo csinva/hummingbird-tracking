@@ -16,7 +16,8 @@ from sklearn.cluster import KMeans
 # starts and ends both 2x2
 # returns them in a specific order (see below)
 def match_starts_with_ends(starts, ends):
-    s0, s1, e0, e1 = starts[0], starts[1], ends[0], ends[1]
+    x, y = 0, 1
+    s0, s1, e0, e1 = starts[x], starts[y], ends[x], ends[y]
 
     def dist(p1, p2):
         return (p1[0] - p2[0]) * (p1[0] - p2[0]) + (p1[1] - p2[1]) * (p1[1] - p2[1])
@@ -26,16 +27,14 @@ def match_starts_with_ends(starts, ends):
         e0, e1 = e1, e0
 
     # starts should be lower than ends (larger y values)
-    if not s0[1] > e0[1]:
+    if not s0[y] > e0[y]:
         s0, e0 = e0, s0
-    if not s1[1] > e1[1]:
+    if not s1[y] > e1[y]:
         s1, e1 = e1, s1
 
     # start0, end0 should be for the lower wing (larger y values)
-    if not s0[1] > s1[1]:
-        ts, te = s0, e0
-        s0, e0 = s1, e1
-        s1, e1 = ts, te
+    if not s0[y] > s1[y]:
+        s0, e0, s1, e1 = s1, e1, s0, e0
 
     return s0, s1, e0, e1
 
@@ -106,8 +105,8 @@ def track_angle_for_clip(fname, vid_id, out_dir="out", num_frames=None, num_line
             else:
                 return False
 
-        if bird_is_present(
-                frame_motion_rgb) and 0 < frame_num < 25:  # TODO: REMOVE THIS: #6981 < frame_num < 7200 and \
+        if bird_is_present(frame_motion_rgb) and \
+                                0 < frame_num < 25:  # TODO: REMOVE THIS: #6981 < frame_num < 7200,  0 < frame_num < 25 \
 
             # try:
             # find lines
@@ -131,14 +130,12 @@ def track_angle_for_clip(fname, vid_id, out_dir="out", num_frames=None, num_line
 
             if km_starts.cluster_centers_[0] < km_starts.cluster_centers_[1]:  # 0 cluster should be bot
                 wing_nums = 1 - wing_nums
-            print(wing_nums)
+
             # calculate average angle for each
             bot_wing_starts = starts[wing_nums == 0]
             bot_wing_ends = ends[wing_nums == 0]
             top_wing_starts = starts[wing_nums == 1]
             top_wing_ends = ends[wing_nums == 1]
-
-            print(starts.shape, bot_wing_starts.shape, top_wing_starts.shape)
 
             # calculate theta from mean_starts, mean_ends (NUM_FRAMES x TOP_OR_BOT x X_OR_Y)
             def calc_theta_averaging_slopes(bot_wing_starts, bot_wing_ends, top_wing_starts, top_wing_ends):
@@ -167,22 +164,14 @@ def track_angle_for_clip(fname, vid_id, out_dir="out", num_frames=None, num_line
             theta_bot, theta_top, thetas[frame_num] = calc_theta_averaging_slopes(bot_wing_starts, bot_wing_ends,
                                                                                   top_wing_starts, top_wing_ends)
 
-            # draw the rest of the results
-            ## start should match up with end that is closest to it
-            km_starts.fit(starts)
-            km_ends.fit(ends)
-            start_bot, start_top, end_bot, end_top = match_starts_with_ends(km_starts.cluster_centers_,
-                                                                            km_ends.cluster_centers_)
+            ## recalculate lines for drawing
+            start_top = np.mean(top_wing_starts, axis=0)
+            end_bot = np.mean(bot_wing_ends, axis=0)
 
-            ## recalculate lines
-            dvec_bot = (-1 * math.cos(radians(theta_bot)), -1 * math.sin(radians(theta_bot)))
-            # end_bot = tuple((s + e) / 2 for s, e in zip(start_bot, end_bot))
-            start_bot = end_bot + tuple(d / math.hypot(dvec_bot[0], dvec_bot[1]) * 60 for d in dvec_bot)
-            dvec_top = (math.cos(radians(theta_top)), -1 * math.sin(radians(theta_top)))
-            end_top = start_top + tuple(d / math.hypot(dvec_top[0], dvec_top[1]) * 60 for d in dvec_top)
-
-            # calculate theta from mean endpoints
-            # thetas[frame_num] = calc_theta(start0, start1, end0, end1)
+            dvec_bot = np.array([-1 * math.cos(radians(theta_bot)), -1 * math.sin(radians(theta_bot))])
+            start_bot = end_bot + dvec_bot / math.hypot(dvec_bot[0], dvec_bot[1]) * 60
+            dvec_top = np.array((math.cos(radians(theta_top)), -1 * math.sin(radians(theta_top))))
+            end_top = start_top + dvec_top / math.hypot(dvec_top[0], dvec_top[1]) * 60
 
             # set bird to present
             bird_presents[frame_num] = 1
@@ -215,7 +204,7 @@ def track_angle_for_clip(fname, vid_id, out_dir="out", num_frames=None, num_line
 
 if __name__ == "__main__":
     data_folder = '/Users/chandan/drive/research/hummingbird_tracking/tracking_code/data'
-    vid_id = 'good'  # 0075
+    vid_id = 'good'  # 0075, good
     fname = oj(data_folder, 'top', 'PIC_' + vid_id + '.MP4')
     out_dir = "out"
     track_angle_for_clip(fname, vid_id, out_dir=out_dir, num_frames=8000, save_ims=True)  # NUM_FRAMES=20
