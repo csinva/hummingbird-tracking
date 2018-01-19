@@ -167,7 +167,7 @@ def track_angle_for_clip(fname, vid_id, out_dir="out", num_frames=None, num_line
 
 if __name__ == "__main__":
     data_folder = '/Users/chandan/drive/research/vision/hummingbird/data'
-    vid_id = 'fast'  # 0075, good
+    vid_id = 'fastec_test'  # 0075, good
     fname = oj(data_folder, 'top', 'PIC_' + vid_id + '.MP4')
     out_dir = "out"
 
