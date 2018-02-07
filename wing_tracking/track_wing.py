@@ -35,10 +35,11 @@ def calc_theta_averaging_slopes(bots_botwing, tops_botwing, bots_topwing,
     for i in range(len(bots_botwing)):
         dys_botwing.append(tops_botwing[i, y] - bots_botwing[i, y])
         dxs_botwing.append(tops_botwing[i, x] - bots_botwing[i, x])
-        cv2.line(frame_motion_rgb, (bots_botwing[i, x], bots_botwing[i, y]),
+        cv2.line(frame_motion_rgb, (bots_botwing[i, x], bots_botwing[i, y]),  # draw in all lines
                  (tops_botwing[i, x], tops_botwing[i, y]),
                  (50, 0, 0, 100), 2)
-    thetas_botwing = [180 - deg(abs(np.arctan2(dy_bot, dx_bot)))
+    dxs_botwing = [-1 * dx for dx in dxs_botwing]  # x should point in right dir
+    thetas_botwing = [-1 * deg(np.arctan2(dy_bot, dx_bot))
                       for dy_bot, dx_bot in zip(dys_botwing, dxs_botwing)]
     theta_botwing = sum(thetas_botwing) / len(thetas_botwing)  # TODO: weight by length of line
 
@@ -49,9 +50,13 @@ def calc_theta_averaging_slopes(bots_botwing, tops_botwing, bots_topwing,
         cv2.line(frame_motion_rgb, (bots_topwing[i, x], bots_topwing[i, y]),
                  (tops_topwing[i, x], tops_topwing[i, y]),
                  (0, 0, 50, 100), 2)
-    thetas_topwing = [deg(abs(np.arctan2(dy_top, dx_top)))
+    dys_topwing = [-1 * dy for dy in dys_topwing]  # y axis points down, this makes dys generally positive
+    thetas_topwing = [deg(np.arctan2(dy_top, dx_top))
                       for dy_top, dx_top in zip(dys_topwing, dxs_topwing)]
     theta_topwing = sum(thetas_topwing) / len(thetas_topwing)
+
+    # deal with when dir flipped
+
 
     # not good at finding small |theta|
     # if theta_botwing < 25 and not theta_topwing < 30:
@@ -110,7 +115,7 @@ def track_angle_for_clip(fname, vid_id, out_dir="out", num_frames=None, num_line
         # frame = translate_and_rotate_frame(frame)
         frame_motion = fgbg.apply(frame)
 
-        if frame_num <= 46:
+        if frame_num <= 46:  # 21 also good test case
             frame_motion[frame_motion == 255] = 0
             # print('unique', np.unique(frame_motion))
             frame_motion_rgb = cv2.cvtColor(frame_motion, cv2.COLOR_GRAY2RGB)
@@ -152,12 +157,15 @@ def track_angle_for_clip(fname, vid_id, out_dir="out", num_frames=None, num_line
                                                     theta_topwing_prev=theta_topwing)
 
                     ## recalculate lines for drawing
-                    bot_topwing = np.mean(bots_topwing, axis=0)
+                    # botwing
                     top_botwing = np.mean(tops_botwing, axis=0)
-                    dvec_botwing = np.array(
-                        [-1 * math.cos(radians(theta_botwing)), -1 * math.sin(radians(theta_botwing))])
+                    dvec_botwing = np.array([-1 * math.cos(radians(theta_botwing)),
+                                             -1 * math.sin(radians(theta_botwing))])
                     bot_botwing = top_botwing + dvec_botwing / math.hypot(dvec_botwing[0], dvec_botwing[1]) * 60
-                    dvec_topwing = np.array((math.cos(radians(theta_topwing)), -1 * math.sin(radians(theta_topwing))))
+                    # top wing
+                    bot_topwing = np.mean(bots_topwing, axis=0)
+                    dvec_topwing = np.array((math.cos(radians(theta_topwing)),
+                                             -1 * math.sin(radians(theta_topwing))))
                     top_topwing = bot_topwing + dvec_topwing / math.hypot(dvec_topwing[0], dvec_topwing[1]) * 60
 
                     # set bird to present and save
