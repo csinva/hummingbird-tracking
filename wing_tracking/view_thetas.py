@@ -31,25 +31,6 @@ def savitzky_golay(y, window_size, order, deriv=0, rate=1):
     -------
     ys : ndarray, shape (N)
         the smoothed signal (or it's n-th derivative).
-    Notes
-    -----
-    The Savitzky-Golay is a type of low-pass filter, particularly
-    suited for smoothing noisy data. The main idea behind this
-    approach is to make for each point a least-square fit with a
-    polynomial of high order over a odd-sized window centered at
-    the point.
-    Examples
-    --------
-    t = np.linspace(-4, 4, 500)
-    y = np.exp( -t**2 ) + np.random.normal(0, 0.05, t.shape)
-    ysg = savitzky_golay(y, window_size=31, order=4)
-    import matplotlib.pyplot as plt
-    plt.plot(t, y, label='Noisy signal')
-    plt.plot(t, np.exp(-t**2), 'k', lw=1.5, label='Original signal')
-    plt.plot(t, ysg, 'r', label='Filtered signal')
-    plt.legend()
-    plt.show()
-    References
     ----------
     .. [1] A. Savitzky, M. J. E. Golay, Smoothing and Differentiation of
        Data by Simplified Least Squares Procedures. Analytical
@@ -86,7 +67,7 @@ def savitzky_golay(y, window_size, order, deriv=0, rate=1):
 
 
 # set paths
-out_dir = 'out_fastec_test'
+out_dir = 'out_fastec_test_save'
 out_file = 'thetas_fastec_test.csv'
 fname = oj(out_dir, out_file)
 thetas = np.loadtxt(fname)

@@ -4,9 +4,9 @@ from os.path import join as oj
 
 # load video
 data_folder = '/Users/chandan/drive/research/vision/hummingbird/data'
-# vid_id = 'fastec_test'  # 0075, good, faste_test
-# fname = oj(data_folder, 'top', 'PIC_' + vid_id + '.MP4')
-fname = oj(data_folder, 'side', 'a.mov')
+vid_id = 'fastec_test'  # 0075, good, faste_test
+fname = oj(data_folder, 'top', 'PIC_' + vid_id + '.MP4')
+# fname = oj(data_folder, 'side', 'a.mov')
 cap = cv2.VideoCapture(fname)
 
 # set params

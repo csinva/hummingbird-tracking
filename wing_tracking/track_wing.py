@@ -65,6 +65,17 @@ def bird_is_present(frame_motion_rgb):
         return False
 
 
+def translate_and_rotate_frame(frame):
+    rows, cols = frame.shape[0], frame.shape[1]
+    center = (758, 350)
+    M = np.float32([[1, 0, rows // 2 - center[0]], [0, 1, cols // 2 - center[1]]])
+    frame = cv2.warpAffine(frame, M, (cols, rows))
+
+    M = cv2.getRotationMatrix2D((rows // 2, cols // 2), -20, 1)
+    frame = cv2.warpAffine(frame, M, (rows, cols))
+    return frame
+
+
 # given a video filename and some parameters, calculates the angle between wings and saves to png and csv
 # output: theta is the angle measure from one wing, around the back of the bird, to the other wing
 def track_angle_for_clip(fname, vid_id, out_dir="out", num_frames=None, num_lines=20, save_ims=False):
@@ -90,6 +101,8 @@ def track_angle_for_clip(fname, vid_id, out_dir="out", num_frames=None, num_line
     while ret and frame_num < num_frames:
         # read frame
         ret, frame = cap.read()
+        # frame = translate_and_rotate_frame(frame)
+
         frame_motion = fgbg.apply(frame)
         frame_motion[frame_motion == 255] = 0
         # print('unique', np.unique(frame_motion))
@@ -144,7 +157,7 @@ def track_angle_for_clip(fname, vid_id, out_dir="out", num_frames=None, num_line
                         plot_endpoints(im, start_bot, start_top, end_bot, end_top)
                         cv2.putText(im, "theta: %g %g %g" % (thetas[frame_num], theta_bot, theta_top), (0, 40),
                                     cv2.FONT_HERSHEY_SIMPLEX, fontScale=0.5, color=(0, 255, 0))
-                    # imageio.imwrite(oj(out_dir, 'frame_' + str(frame_num) + '_motion.jpg'), frame_motion_rgb)
+                    imageio.imwrite(oj(out_dir, 'frame_' + str(frame_num) + '_motion.jpg'), frame_motion_rgb)
                     imageio.imwrite(oj(out_dir, 'frame_' + str(frame_num) + '.jpg'), frame)
         except Exception as e:
             pass  # print('error', e)
