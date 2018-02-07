@@ -2,24 +2,26 @@ import numpy as np
 import cv2
 from os.path import join as oj
 
+# load video
 data_folder = '/Users/chandan/drive/research/vision/hummingbird/data'
-vid_id = 'fastec_test'  # 0075, good, faste_test
-fname = oj(data_folder, 'top', 'PIC_' + vid_id + '.MP4')
-
+# vid_id = 'fastec_test'  # 0075, good, faste_test
+# fname = oj(data_folder, 'top', 'PIC_' + vid_id + '.MP4')
+fname = oj(data_folder, 'side', 'a.mov')
 cap = cv2.VideoCapture(fname)
 
-# Parameters for lucas kanade optical flow
-lk_params = dict(winSize=(15, 15),
-                 maxLevel=2,
+# set params
+lk_params = dict(winSize=(40, 40),  # default(15, 15)
+                 maxLevel=4,
                  criteria=(cv2.TERM_CRITERIA_EPS | cv2.TERM_CRITERIA_COUNT, 10, 0.03))
-# Create some random colors
+n_points = 4
 color = np.random.randint(0, 255, (100, 3))
-# Take first frame and find corners in it
+
+# select points on first fame
 ret, old_frame = cap.read()
 old_gray = cv2.cvtColor(old_frame, cv2.COLOR_BGR2GRAY)
 pt_num = 0
-n_points = 4
 p0 = np.ones(shape=(n_points, 1, 2), dtype=np.float32)
+mask = np.zeros_like(old_frame)  # create a mask image for drawing purposes
 
 
 def click_and_crop(event, x, y, flags, param):
@@ -53,14 +55,6 @@ while True:
         exit(0)
 cv2.destroyAllWindows()
 
-# p0[0, 0, 0] = 10
-# p0[0, 0, 1] = 10
-# print(p0.shape, p0)
-# print(type(p0), p0.dtype)
-
-# exit(0)
-# Create a mask image for drawing purposes
-mask = np.zeros_like(old_frame)
 while True:
     ret, frame = cap.read()
     frame_gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
