@@ -67,7 +67,7 @@ def savitzky_golay(y, window_size, order, deriv=0, rate=1):
 
 
 # set paths
-out_dir = 'out_fastec_test_save'
+out_dir = 'out'
 out_file = 'thetas_fastec_test.csv'
 fname = oj(out_dir, out_file)
 thetas = np.loadtxt(fname)

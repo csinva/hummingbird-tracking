@@ -1,5 +1,5 @@
 import math
-from math import degrees
+from math import degrees as deg
 from math import radians
 import imageio
 import numpy as np
@@ -26,26 +26,31 @@ def plot_endpoints(im_rgb, start1, start2, end1, end2):
 
 
 # calculate theta from mean_starts, mean_ends (NUM_FRAMES x TOP_OR_BOT x X_OR_Y)
-def calc_theta_averaging_slopes(bots_botwing, tops_botwing, bots_topwing, tops_topwing, frame_motion_rgb):
+def calc_theta_averaging_slopes(bots_botwing, tops_botwing, bots_topwing,
+                                tops_topwing, frame_motion_rgb, theta_botwing_prev=None, theta_topwing_prev=None):
     x, y = 0, 1
     dys_botwing, dxs_botwing, dys_topwing, dxs_topwing = [], [], [], []
+
+    # botwing
     for i in range(len(bots_botwing)):
         dys_botwing.append(tops_botwing[i, y] - bots_botwing[i, y])
         dxs_botwing.append(tops_botwing[i, x] - bots_botwing[i, x])
         cv2.line(frame_motion_rgb, (bots_botwing[i, x], bots_botwing[i, y]),
                  (tops_botwing[i, x], tops_botwing[i, y]),
                  (50, 0, 0, 100), 2)
+    thetas_botwing = [180 - deg(abs(np.arctan2(dy_bot, dx_bot)))
+                      for dy_bot, dx_bot in zip(dys_botwing, dxs_botwing)]
+    theta_botwing = sum(thetas_botwing) / len(thetas_botwing)  # TODO: weight by length of line
+
+    # topwing
     for i in range(len(bots_topwing)):
         dys_topwing.append(tops_topwing[i, y] - bots_topwing[i, y])
         dxs_topwing.append(tops_topwing[i, x] - bots_topwing[i, x])
         cv2.line(frame_motion_rgb, (bots_topwing[i, x], bots_topwing[i, y]),
                  (tops_topwing[i, x], tops_topwing[i, y]),
                  (0, 0, 50, 100), 2)
-    thetas_botwing = [180 - degrees(abs(np.arctan2(dy_bot, dx_bot)))
-                  for dy_bot, dx_bot in zip(dys_botwing, dxs_botwing)]
-    thetas_topwing = [degrees(abs(np.arctan2(dy_top, dx_top)))
-                  for dy_top, dx_top in zip(dys_topwing, dxs_topwing)]
-    theta_botwing = sum(thetas_botwing) / len(thetas_botwing)  # TODO: weight by length of line
+    thetas_topwing = [deg(abs(np.arctan2(dy_top, dx_top)))
+                      for dy_top, dx_top in zip(dys_topwing, dxs_topwing)]
     theta_topwing = sum(thetas_topwing) / len(thetas_topwing)
 
     # not good at finding small |theta|
@@ -90,6 +95,7 @@ def track_angle_for_clip(fname, vid_id, out_dir="out", num_frames=None, num_line
         num_frames = num_frames_total
     ret = True
     frame_num = 0
+    theta_botwing, theta_topwing = None, None
     km_starts = KMeans(n_clusters=2, random_state=0)
     thetas = np.ones((num_frames, 1)) * -1  # stores the data
     bird_presents = np.zeros((num_frames, 1))  # stores the data
@@ -102,10 +108,9 @@ def track_angle_for_clip(fname, vid_id, out_dir="out", num_frames=None, num_line
         # read frame
         ret, frame = cap.read()
         # frame = translate_and_rotate_frame(frame)
-
         frame_motion = fgbg.apply(frame)
 
-        if frame_num == 46:
+        if frame_num <= 46:
             frame_motion[frame_motion == 255] = 0
             # print('unique', np.unique(frame_motion))
             frame_motion_rgb = cv2.cvtColor(frame_motion, cv2.COLOR_GRAY2RGB)
@@ -141,16 +146,18 @@ def track_angle_for_clip(fname, vid_id, out_dir="out", num_frames=None, num_line
                     # print(bots_botwing, tops_botwing, bots_topwing, tops_topwing)
 
                     # calculate angles
-                    theta_bot, theta_top, thetas[frame_num] = calc_theta_averaging_slopes(bots_botwing, tops_botwing,
-                                                                                          bots_topwing, tops_topwing,
-                                                                                          frame_motion_rgb)
+                    theta_botwing, theta_topwing, thetas[frame_num] = \
+                        calc_theta_averaging_slopes(bots_botwing, tops_botwing, bots_topwing, tops_topwing,
+                                                    frame_motion_rgb, theta_botwing_prev=theta_botwing,
+                                                    theta_topwing_prev=theta_topwing)
 
                     ## recalculate lines for drawing
                     bot_topwing = np.mean(bots_topwing, axis=0)
                     top_botwing = np.mean(tops_botwing, axis=0)
-                    dvec_botwing = np.array([-1 * math.cos(radians(theta_bot)), -1 * math.sin(radians(theta_bot))])
+                    dvec_botwing = np.array(
+                        [-1 * math.cos(radians(theta_botwing)), -1 * math.sin(radians(theta_botwing))])
                     bot_botwing = top_botwing + dvec_botwing / math.hypot(dvec_botwing[0], dvec_botwing[1]) * 60
-                    dvec_topwing = np.array((math.cos(radians(theta_top)), -1 * math.sin(radians(theta_top))))
+                    dvec_topwing = np.array((math.cos(radians(theta_topwing)), -1 * math.sin(radians(theta_topwing))))
                     top_topwing = bot_topwing + dvec_topwing / math.hypot(dvec_topwing[0], dvec_topwing[1]) * 60
 
                     # set bird to present and save
@@ -158,7 +165,8 @@ def track_angle_for_clip(fname, vid_id, out_dir="out", num_frames=None, num_line
                     if save_ims:
                         for im in (frame, frame_motion_rgb):
                             plot_endpoints(im, bot_botwing, bot_topwing, top_botwing, top_topwing)
-                            cv2.putText(im, "theta: %g %g %g" % (thetas[frame_num], theta_bot, theta_top), (0, 40),
+                            cv2.putText(im, "theta: %g %g %g" % (thetas[frame_num], theta_botwing, theta_topwing),
+                                        (0, 40),
                                         cv2.FONT_HERSHEY_SIMPLEX, fontScale=0.5, color=(0, 255, 0))
                         imageio.imwrite(oj(out_dir, 'frame_' + str(frame_num) + '_motion.jpg'), frame_motion_rgb)
                         imageio.imwrite(oj(out_dir, 'frame_' + str(frame_num) + '.jpg'), frame)
@@ -186,6 +194,5 @@ if __name__ == "__main__":
     vid_id = 'fastec_test'  # 0075, good
     fname = oj(data_folder, 'top', 'PIC_' + vid_id + '.MP4')
     out_dir = "out"
-
     track_angle_for_clip(fname, vid_id,
                          out_dir=out_dir, num_frames=5000, save_ims=True)  # NUM_FRAMES=20
