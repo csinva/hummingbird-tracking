@@ -1,3 +1,6 @@
+import numpy as np
+from math import factorial
+import matplotlib.pyplot as plt
 cs = ['#e41a1c', '#377eb8', '#4daf4a', '#984ea3', '#ff7f00']
 
 
@@ -30,8 +33,6 @@ def savitzky_golay(y, window_size, order, deriv=0, rate=1):
        W.H. Press, S.A. Teukolsky, W.T. Vetterling, B.P. Flannery
        Cambridge University Press ISBN-13: 9780521880688
     """
-    import numpy as np
-    from math import factorial
 
     try:
         window_size = np.abs(np.int(window_size))
@@ -55,6 +56,7 @@ def savitzky_golay(y, window_size, order, deriv=0, rate=1):
     lastvals = y[-1] + np.abs(y[-half_window - 1:-1][::-1] - y[-1])
     y = np.concatenate((firstvals, y, lastvals))
     return np.convolve(m[::-1], y, mode='valid')
+
 
 def hist(data):
     d = np.diff(np.unique(data)).min()
