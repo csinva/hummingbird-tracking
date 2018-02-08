@@ -31,7 +31,7 @@ def calc_theta_averaging_slopes(bots_botwing, tops_botwing, bots_topwing,
     x, y = 0, 1
     dys_botwing, dxs_botwing, dys_topwing, dxs_topwing = [], [], [], []
 
-    # botwing
+    ############ botwing ###############
     for i in range(len(bots_botwing)):
         dys_botwing.append(tops_botwing[i, y] - bots_botwing[i, y])
         dxs_botwing.append(tops_botwing[i, x] - bots_botwing[i, x])
@@ -39,12 +39,29 @@ def calc_theta_averaging_slopes(bots_botwing, tops_botwing, bots_topwing,
                  (tops_botwing[i, x], tops_botwing[i, y]),
                  (50, 0, 0, 100), 2)
     dxs_botwing = [-1 * dx for dx in dxs_botwing]  # x should point in right dir
-    thetas_botwing = [-1 * deg(np.arctan2(dy_bot, dx_bot))
-                      for dy_bot, dx_bot in zip(dys_botwing, dxs_botwing)]
-    # thetas_botwing[dys_botwing < 0]
-    theta_botwing = sum(thetas_botwing) / len(thetas_botwing)  # TODO: weight by length of line
+    dys_botwing = np.array(dys_botwing)  # dys_botwing are generally negative
 
-    # topwing
+    # adjust dx for nearly horizontal lines
+    if theta_botwing_prev is None:
+        facing_left = False
+    else:
+        facing_left = theta_botwing_prev > 120
+        facing_right = theta_botwing_prev < 60
+
+        if facing_left:  # all dxs should be negative
+            dxs_botwing = np.absolute(dxs_botwing) * -1
+
+        elif facing_right:  # all dxs should be positive
+            dxs_botwing = np.absolute(dxs_botwing)
+
+    # calculate botwing angles
+    thetas_botwing = np.array([-1 * deg(np.arctan2(dy_bot, dx_bot))
+                               for dy_bot, dx_bot in zip(dys_botwing, dxs_botwing)])
+    if facing_left:
+        thetas_botwing[dys_botwing > 0] = 360 - dys_botwing[dys_botwing > 0]
+    theta_botwing = np.sum(thetas_botwing) / np.size(thetas_botwing)  # TODO: weight by length of line
+
+    ############ topwing ###############
     for i in range(len(bots_topwing)):
         dys_topwing.append(tops_topwing[i, y] - bots_topwing[i, y])
         dxs_topwing.append(tops_topwing[i, x] - bots_topwing[i, x])
@@ -56,7 +73,6 @@ def calc_theta_averaging_slopes(bots_botwing, tops_botwing, bots_topwing,
     dys_topwing = np.array([-1 * dy for dy in dys_topwing])  # y axis points down, this makes dys generally positive
 
     # adjust dx for nearly horizontal lines
-    # print('theta_prev', theta_topwing_prev)
     if theta_topwing_prev is None:
         facing_left = False
     else:
@@ -75,6 +91,7 @@ def calc_theta_averaging_slopes(bots_botwing, tops_botwing, bots_topwing,
     if facing_left:
         thetas_topwing[dys_topwing < 0] = 360 + dys_topwing[dys_topwing < 0]
     theta_topwing = np.sum(thetas_topwing) / np.size(thetas_topwing)
+    # weight by line lens
     # line_lens = np.array([np.hypot(dy_top, dx_top)
     #                       for dy_top, dx_top in zip(dys_topwing, dxs_topwing)])
     # theta_topwing = np.sum(np.multiply(thetas_topwing, line_lens)) / np.sum(line_lens)
@@ -91,13 +108,12 @@ def bird_is_present(frame_motion_rgb):
         return False
 
 
-def translate_and_rotate_frame(frame):
+def translate_and_rotate_frame(frame, angle=-40, center=(758, 350)):
     rows, cols = frame.shape[0], frame.shape[1]
-    center = (758, 350)
     M = np.float32([[1, 0, rows // 2 - center[0]], [0, 1, cols // 2 - center[1]]])
     frame = cv2.warpAffine(frame, M, (cols, rows))
 
-    M = cv2.getRotationMatrix2D((rows // 2, cols // 2), -20, 1)
+    M = cv2.getRotationMatrix2D((rows // 2, cols // 2), angle, 1)
     frame = cv2.warpAffine(frame, M, (rows, cols))
     return frame
 
@@ -125,77 +141,77 @@ def track_angle_for_clip(fname, vid_id, out_dir="out", num_frames=None, num_line
     print('num_frames', num_frames, 'num_frames_total', num_frames_total)
 
     # iterate
-    while ret and frame_num < 47:  # num_frames:
+    while ret and frame_num < num_frames: #and frame_num < 47:  # num_frames:
         # read frame
         ret, frame = cap.read()
         # frame = translate_and_rotate_frame(frame)
         frame_motion = fgbg.apply(frame)
 
-        if 0 < frame_num <= 46:  # 21 also good test case
-            frame_motion[frame_motion == 255] = 0
-            # print('unique', np.unique(frame_motion))
-            frame_motion_rgb = cv2.cvtColor(frame_motion, cv2.COLOR_GRAY2RGB)
-            if frame_num % 1000 == 0:
-                print('frame_num', frame_num)
-            try:
-                if bird_is_present(frame_motion_rgb):
-                    # and 6981 < frame_num < 7200:  # TODO: REMOVE THIS: #6981 < frame_num < 7200,  0 < frame_num < 25 \
-                    # try:
-                    # find lines
-                    lines = cv2.HoughLinesP(frame_motion, 1, np.pi / 180, 100, 100, 20)  # 200 is num_votes
-                    num_lines_possible = min(num_lines, len(lines))
-                    bots = np.zeros((num_lines_possible, 2)).astype(np.int32)
-                    tops = np.zeros((num_lines_possible, 2)).astype(np.int32)
-                    for line_num in range(num_lines_possible):
-                        for x1, y1, x2, y2 in lines[line_num]:
-                            bots[line_num] = [x1, y1]
-                            tops[line_num] = [x2, y2]
-                            if y2 > y1:  # make sure bots below tops (larger y vals)
-                                bots[line_num] = [x2, y2]
-                                tops[line_num] = [x1, y1]
+        # if 0 < frame_num <= 46:  # 21 also good test case
+        frame_motion[frame_motion == 255] = 0
+        # print('unique', np.unique(frame_motion))
+        frame_motion_rgb = cv2.cvtColor(frame_motion, cv2.COLOR_GRAY2RGB)
+        if frame_num % 250 == 0:
+            print('frame_num', frame_num)
+        try:
+            if bird_is_present(frame_motion_rgb):
+                # and 6981 < frame_num < 7200:  # TODO: REMOVE THIS: #6981 < frame_num < 7200,  0 < frame_num < 25 \
+                # try:
+                # find lines
+                lines = cv2.HoughLinesP(frame_motion, 1, np.pi / 180, 100, 100, 20)  # 200 is num_votes
+                num_lines_possible = min(num_lines, len(lines))
+                bots = np.zeros((num_lines_possible, 2)).astype(np.int32)
+                tops = np.zeros((num_lines_possible, 2)).astype(np.int32)
+                for line_num in range(num_lines_possible):
+                    for x1, y1, x2, y2 in lines[line_num]:
+                        bots[line_num] = [x1, y1]
+                        tops[line_num] = [x2, y2]
+                        if y2 > y1:  # make sure bots below tops (larger y vals)
+                            bots[line_num] = [x2, y2]
+                            tops[line_num] = [x1, y1]
 
-                    # find clusters, note bots.y < tops.y
-                    km_starts.fit(bots[:, 1].reshape(-1, 1))  # only cluster by y values
-                    wing_nums = km_starts.predict(bots[:, 1].reshape(-1, 1))
-                    # 0 cluster should be bot
-                    if km_starts.cluster_centers_[0] < km_starts.cluster_centers_[1]:
-                        wing_nums = 1 - wing_nums
+                # find clusters, note bots.y < tops.y
+                km_starts.fit(bots[:, 1].reshape(-1, 1))  # only cluster by y values
+                wing_nums = km_starts.predict(bots[:, 1].reshape(-1, 1))
+                # 0 cluster should be bot
+                if km_starts.cluster_centers_[0] < km_starts.cluster_centers_[1]:
+                    wing_nums = 1 - wing_nums
 
-                    # separate by wing
-                    bots_botwing, tops_botwing = bots[wing_nums == 0], tops[wing_nums == 0]
-                    bots_topwing, tops_topwing = bots[wing_nums == 1], tops[wing_nums == 1]
-                    # print(bots_botwing, tops_botwing, bots_topwing, tops_topwing)
+                # separate by wing
+                bots_botwing, tops_botwing = bots[wing_nums == 0], tops[wing_nums == 0]
+                bots_topwing, tops_topwing = bots[wing_nums == 1], tops[wing_nums == 1]
+                # print(bots_botwing, tops_botwing, bots_topwing, tops_topwing)
 
-                    # calculate angles
-                    theta_botwing, theta_topwing, thetas[frame_num] = \
-                        calc_theta_averaging_slopes(bots_botwing, tops_botwing, bots_topwing, tops_topwing,
-                                                    frame_motion_rgb, theta_botwing_prev=theta_botwing,
-                                                    theta_topwing_prev=theta_topwing)
+                # calculate angles
+                theta_botwing, theta_topwing, thetas[frame_num] = \
+                    calc_theta_averaging_slopes(bots_botwing, tops_botwing, bots_topwing, tops_topwing,
+                                                frame_motion_rgb, theta_botwing_prev=theta_botwing,
+                                                theta_topwing_prev=theta_topwing)
 
-                    ## recalculate lines for drawing
-                    # botwing
-                    top_botwing = np.mean(tops_botwing, axis=0)
-                    dvec_botwing = np.array([-1 * math.cos(radians(theta_botwing)),
-                                             -1 * math.sin(radians(theta_botwing))])
-                    bot_botwing = top_botwing + dvec_botwing / math.hypot(dvec_botwing[0], dvec_botwing[1]) * 60
-                    # top wing
-                    bot_topwing = np.mean(bots_topwing, axis=0)
-                    dvec_topwing = np.array((math.cos(radians(theta_topwing)),
-                                             -1 * math.sin(radians(theta_topwing))))
-                    top_topwing = bot_topwing + dvec_topwing / math.hypot(dvec_topwing[0], dvec_topwing[1]) * 60
+                ## recalculate lines for drawing
+                # botwing
+                top_botwing = np.mean(tops_botwing, axis=0)
+                dvec_botwing = np.array([-1 * math.cos(radians(theta_botwing)),
+                                         -1 * math.sin(radians(theta_botwing))])
+                bot_botwing = top_botwing + dvec_botwing / math.hypot(dvec_botwing[0], dvec_botwing[1]) * 60
+                # top wing
+                bot_topwing = np.mean(bots_topwing, axis=0)
+                dvec_topwing = np.array((math.cos(radians(theta_topwing)),
+                                         -1 * math.sin(radians(theta_topwing))))
+                top_topwing = bot_topwing + dvec_topwing / math.hypot(dvec_topwing[0], dvec_topwing[1]) * 60
 
-                    # set bird to present and save
-                    bird_presents[frame_num] = 1
-                    if save_ims:
-                        for im in (frame, frame_motion_rgb):
-                            plot_endpoints(im, bot_botwing, bot_topwing, top_botwing, top_topwing)
-                            cv2.putText(im, "theta: %g %g %g" % (thetas[frame_num], theta_botwing, theta_topwing),
-                                        (0, 40),
-                                        cv2.FONT_HERSHEY_SIMPLEX, fontScale=0.5, color=(0, 255, 0))
-                        imageio.imwrite(oj(out_dir, 'frame_' + str(frame_num) + '_motion.jpg'), frame_motion_rgb)
-                        imageio.imwrite(oj(out_dir, 'frame_' + str(frame_num) + '.jpg'), frame)
-            except Exception as e:
-                print('error', e)
+                # set bird to present and save
+                bird_presents[frame_num] = 1
+                if save_ims:
+                    for im in (frame, frame_motion_rgb):
+                        plot_endpoints(im, bot_botwing, bot_topwing, top_botwing, top_topwing)
+                        cv2.putText(im, "theta: %g %g %g" % (thetas[frame_num], theta_botwing, theta_topwing),
+                                    (0, 40),
+                                    cv2.FONT_HERSHEY_SIMPLEX, fontScale=0.5, color=(0, 255, 0))
+                    # imageio.imwrite(oj(out_dir, 'frame_' + str(frame_num) + '_motion.jpg'), frame_motion_rgb)
+                    # imageio.imwrite(oj(out_dir, 'frame_' + str(frame_num) + '.jpg'), frame)
+        except Exception as e:
+            print('error', e)
         frame_num += 1
 
     # release video
@@ -215,7 +231,7 @@ def track_angle_for_clip(fname, vid_id, out_dir="out", num_frames=None, num_line
 
 if __name__ == "__main__":
     data_folder = '/Users/chandan/drive/research/vision/hummingbird/data'
-    vid_id = 'fastec_test'  # 0075, good
+    vid_id = 'fastec_train'  # 0075, good
     fname = oj(data_folder, 'top', 'PIC_' + vid_id + '.MP4')
     out_dir = "out"
     track_angle_for_clip(fname, vid_id,
