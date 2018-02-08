@@ -41,6 +41,7 @@ def calc_theta_averaging_slopes(bots_botwing, tops_botwing, bots_topwing,
     dxs_botwing = [-1 * dx for dx in dxs_botwing]  # x should point in right dir
     thetas_botwing = [-1 * deg(np.arctan2(dy_bot, dx_bot))
                       for dy_bot, dx_bot in zip(dys_botwing, dxs_botwing)]
+    # thetas_botwing[dys_botwing < 0]
     theta_botwing = sum(thetas_botwing) / len(thetas_botwing)  # TODO: weight by length of line
 
     # topwing
@@ -50,19 +51,34 @@ def calc_theta_averaging_slopes(bots_botwing, tops_botwing, bots_topwing,
         cv2.line(frame_motion_rgb, (bots_topwing[i, x], bots_topwing[i, y]),
                  (tops_topwing[i, x], tops_topwing[i, y]),
                  (0, 0, 50, 100), 2)
-    dys_topwing = [-1 * dy for dy in dys_topwing]  # y axis points down, this makes dys generally positive
-    thetas_topwing = [deg(np.arctan2(dy_top, dx_top))
-                      for dy_top, dx_top in zip(dys_topwing, dxs_topwing)]
-    theta_topwing = sum(thetas_topwing) / len(thetas_topwing)
 
-    # deal with when dir flipped
+    dxs_topwing = np.array(dxs_topwing)
+    dys_topwing = np.array([-1 * dy for dy in dys_topwing])  # y axis points down, this makes dys generally positive
 
+    # adjust dx for nearly horizontal lines
+    # print('theta_prev', theta_topwing_prev)
+    if theta_topwing_prev is None:
+        facing_left = False
+    else:
+        facing_left = theta_topwing_prev > 120
+        facing_right = theta_topwing_prev < 60
 
-    # not good at finding small |theta|
-    # if theta_botwing < 25 and not theta_topwing < 30:
-    #     theta_topwing = 30
-    # if theta_topwing < 25 and not theta_botwing < 30:
-    #     theta_botwing = 30
+        if facing_left:  # all dxs should be negative
+            dxs_topwing = np.absolute(dxs_topwing) * -1
+
+        elif facing_right:  # all dxs should be positive
+            dxs_topwing = np.absolute(dxs_topwing)
+
+    # calculate topwing angles
+    thetas_topwing = np.array([deg(np.arctan2(dy_top, dx_top))
+                               for dy_top, dx_top in zip(dys_topwing, dxs_topwing)])
+    if facing_left:
+        thetas_topwing[dys_topwing < 0] = 360 + dys_topwing[dys_topwing < 0]
+    theta_topwing = np.sum(thetas_topwing) / np.size(thetas_topwing)
+    # line_lens = np.array([np.hypot(dy_top, dx_top)
+    #                       for dy_top, dx_top in zip(dys_topwing, dxs_topwing)])
+    # theta_topwing = np.sum(np.multiply(thetas_topwing, line_lens)) / np.sum(line_lens)
+
     return theta_botwing, theta_topwing, theta_botwing + theta_topwing
 
 
@@ -115,7 +131,7 @@ def track_angle_for_clip(fname, vid_id, out_dir="out", num_frames=None, num_line
         # frame = translate_and_rotate_frame(frame)
         frame_motion = fgbg.apply(frame)
 
-        if frame_num <= 46:  # 21 also good test case
+        if 0 < frame_num <= 46:  # 21 also good test case
             frame_motion[frame_motion == 255] = 0
             # print('unique', np.unique(frame_motion))
             frame_motion_rgb = cv2.cvtColor(frame_motion, cv2.COLOR_GRAY2RGB)
@@ -179,7 +195,7 @@ def track_angle_for_clip(fname, vid_id, out_dir="out", num_frames=None, num_line
                         imageio.imwrite(oj(out_dir, 'frame_' + str(frame_num) + '_motion.jpg'), frame_motion_rgb)
                         imageio.imwrite(oj(out_dir, 'frame_' + str(frame_num) + '.jpg'), frame)
             except Exception as e:
-                pass  # print('error', e)
+                print('error', e)
         frame_num += 1
 
     # release video
