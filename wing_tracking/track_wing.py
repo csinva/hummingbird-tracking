@@ -1,16 +1,15 @@
 import math
 from math import degrees as deg
 from math import radians
-import imageio
-import numpy as np
-import cv2
 from os.path import join as oj
 import os
-import subprocess
+import sys
 import matplotlib.pyplot as plt
-import matplotlib.colors as colors
-import matplotlib.cm as cmx
+import numpy as np
 from sklearn.cluster import KMeans
+import imageio
+import cv2
+import argparse
 
 
 # draw two arrows onto the given image
@@ -59,7 +58,10 @@ def calc_theta_averaging_slopes(bots_botwing, tops_botwing, bots_topwing,
                                for dy_bot, dx_bot in zip(dys_botwing, dxs_botwing)])
     if facing_left:
         thetas_botwing[dys_botwing > 0] = 360 - dys_botwing[dys_botwing > 0]
-    theta_botwing = np.sum(thetas_botwing) / np.size(thetas_botwing)  # TODO: weight by length of line
+    # theta_botwing = np.sum(thetas_botwing) / np.size(thetas_botwing)  # TODO: weight by length of line
+    line_lens = np.array([np.hypot(dy_bot, dx_bot)
+                          for dy_bot, dx_bot in zip(dys_botwing, dxs_botwing)])
+    theta_botwing = np.sum(np.multiply(thetas_botwing, line_lens)) / np.sum(line_lens)
 
     ############ topwing ###############
     for i in range(len(bots_topwing)):
@@ -90,11 +92,11 @@ def calc_theta_averaging_slopes(bots_botwing, tops_botwing, bots_topwing,
                                for dy_top, dx_top in zip(dys_topwing, dxs_topwing)])
     if facing_left:
         thetas_topwing[dys_topwing < 0] = 360 + dys_topwing[dys_topwing < 0]
-    theta_topwing = np.sum(thetas_topwing) / np.size(thetas_topwing)
+    # theta_topwing = np.sum(thetas_topwing) / np.size(thetas_topwing)
     # weight by line lens
-    # line_lens = np.array([np.hypot(dy_top, dx_top)
-    #                       for dy_top, dx_top in zip(dys_topwing, dxs_topwing)])
-    # theta_topwing = np.sum(np.multiply(thetas_topwing, line_lens)) / np.sum(line_lens)
+    line_lens = np.array([np.hypot(dy_top, dx_top)
+                          for dy_top, dx_top in zip(dys_topwing, dxs_topwing)])
+    theta_topwing = np.sum(np.multiply(thetas_topwing, line_lens)) / np.sum(line_lens)
 
     return theta_botwing, theta_topwing, theta_botwing + theta_topwing
 
@@ -141,21 +143,19 @@ def track_angle_for_clip(fname, vid_id, out_dir="out", num_frames=None, num_line
     print('num_frames', num_frames, 'num_frames_total', num_frames_total)
 
     # iterate
-    while ret and frame_num < num_frames: #and frame_num < 47:  # num_frames:
+    while ret and frame_num < num_frames:  # and frame_num < 47:  # num_frames:
         # read frame
         ret, frame = cap.read()
         # frame = translate_and_rotate_frame(frame)
         frame_motion = fgbg.apply(frame)
 
-        # if 0 < frame_num <= 46:  # 21 also good test case
         frame_motion[frame_motion == 255] = 0
         # print('unique', np.unique(frame_motion))
         frame_motion_rgb = cv2.cvtColor(frame_motion, cv2.COLOR_GRAY2RGB)
         if frame_num % 250 == 0:
             print('frame_num', frame_num)
         try:
-            if bird_is_present(frame_motion_rgb):
-                # and 6981 < frame_num < 7200:  # TODO: REMOVE THIS: #6981 < frame_num < 7200,  0 < frame_num < 25 \
+            if bird_is_present(frame_motion_rgb) and 300 < frame_num < 450:  # CHANDAN LOOK HERE
                 # try:
                 # find lines
                 lines = cv2.HoughLinesP(frame_motion, 1, np.pi / 180, 100, 100, 20)  # 200 is num_votes
@@ -202,14 +202,14 @@ def track_angle_for_clip(fname, vid_id, out_dir="out", num_frames=None, num_line
 
                 # set bird to present and save
                 bird_presents[frame_num] = 1
-                if save_ims:
+                if save_ims and frame_num < 100:
                     for im in (frame, frame_motion_rgb):
                         plot_endpoints(im, bot_botwing, bot_topwing, top_botwing, top_topwing)
                         cv2.putText(im, "theta: %g %g %g" % (thetas[frame_num], theta_botwing, theta_topwing),
                                     (0, 40),
                                     cv2.FONT_HERSHEY_SIMPLEX, fontScale=0.5, color=(0, 255, 0))
-                    # imageio.imwrite(oj(out_dir, 'frame_' + str(frame_num) + '_motion.jpg'), frame_motion_rgb)
-                    # imageio.imwrite(oj(out_dir, 'frame_' + str(frame_num) + '.jpg'), frame)
+                        imageio.imwrite(oj(out_dir, 'frame_' + str(frame_num) + '_motion.jpg'), frame_motion_rgb)
+                        imageio.imwrite(oj(out_dir, 'frame_' + str(frame_num) + '.jpg'), frame)
         except Exception as e:
             print('error', e)
         frame_num += 1
@@ -229,10 +229,23 @@ def track_angle_for_clip(fname, vid_id, out_dir="out", num_frames=None, num_line
     print('succesfully completed')
 
 
+def parse():
+    parser = argparse.ArgumentParser(description='track hummingbird wings')
+    parser.add_argument('--input_file', type=str)
+    parser.add_argument('--output_folder', type=str)
+    parser.add_argument('--save_ims', type=str)
+
+    args = parser.parse_args()
+
+    return args.input_file, args.output_folder, args.save_ims == "yes"
+
+
 if __name__ == "__main__":
     data_folder = '/Users/chandan/drive/research/vision/hummingbird/data'
-    vid_id = 'fastec_train'  # 0075, good
+    vid_id = 'fastec_test'  # 0075, good, fastec_test
     fname = oj(data_folder, 'top', 'PIC_' + vid_id + '.MP4')
-    out_dir = "out"
+    out_dir = 'out_' + vid_id + '_ims'
+    if len(sys.argv) > 1:
+        fname, out_dir, save_ims = parse()
     track_angle_for_clip(fname, vid_id,
                          out_dir=out_dir, num_frames=5000, save_ims=True)  # NUM_FRAMES=20

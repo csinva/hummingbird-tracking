@@ -1,11 +1,28 @@
-# method
+# method description
 - segment with MOG2 (uses motion to subtract the background)
 - hough line transform to get line segments
 - k-means with k=2 to cluster the line segments
 - calculate angle from the average of these
+    - weight by length of lines
 
 # assumptions
-- found points will always be closer to their corresponding kmean
-- bird is flying horizontally -  (ie one wing is lower than other)
-- bird wings are within frame
-- only one bird
+- bird wings are mostly within frame
+- bird somewhat horizontal (within reasonable amount, ~45 degrees), facing left
+- wing beat lasts at least a couple frames (ie camera samples faster than bird beats wings)
+
+# failures
+- first few frames are sometimes not very good
+- more than one bird
+
+# usage
+- to run any code, first open terminal and cd do the directory containing this file
+
+## preprocessing
+- this code takes a video (.MP4 preferably) as input
+- for fastec videos, images must be combined into a video before running
+    - this can be done by setting parameters in "convert_ims.sh" file and then running ./convert_ims.sh in the terminal 
+
+## running
+- set parameters in the "run_track.sh" file
+- run "./run_track.sh" file in the terminal
+ 
