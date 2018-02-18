@@ -10,7 +10,7 @@
 - bird somewhat horizontal (within reasonable amount, ~45 degrees), facing left
 - wing beat lasts at least a couple frames (ie camera samples faster than bird beats wings)
 
-# failures
+# limitations
 - first few frames are sometimes not very good
 - more than one bird
 
