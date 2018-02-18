@@ -1,8 +1,9 @@
 import numpy as np
+import sys
 from os.path import join as oj
 import matplotlib.pyplot as plt
 import util
-from scipy import interpolate
+import argparse
 from scipy.signal import argrelextrema
 
 
@@ -71,16 +72,27 @@ def calc_stats_all(pred, lab):
     print('mistakes', pred[mistakes], len(mistakes), pred.size)
 
 
+def parse():
+    parser = argparse.ArgumentParser(description='track hummingbird wings')
+    parser.add_argument('--csv_dir', type=str)
+    parser.add_argument('--label_file', type=str, default="")
+    args = parser.parse_args()
+    return args.csv_dir, args.label_file
+
+
 if __name__ == '__main__':
     # set paths
     vid_id = 'good'  # fastec_test, fastec_train, good
-    out_dir = 'out_' + vid_id
-    out_file = 'thetas_' + vid_id + '.csv'
+    csv_dir = 'out_' + vid_id
+    csv_file = 'thetas_' + vid_id + '.csv'
+    if len(sys.argv) > 1:
+        csv_dir, label_file = parse()
+
+    fname = oj(csv_dir, csv_file)
     label_file = '../data/top/labels/fastec/' + vid_id + '.csv'
-    fname = oj(out_dir, out_file)
 
     t, thetas = load_thetas(fname)
-    extrema_idxs_pred, yhat = smooth_and_find_extrema(thetas, out_dir)
+    extrema_idxs_pred, yhat = smooth_and_find_extrema(thetas, csv_dir)
     extrema_ts_pred = t[extrema_idxs_pred]
 
     # plotting

@@ -234,9 +234,7 @@ def parse():
     parser.add_argument('--input_file', type=str)
     parser.add_argument('--output_folder', type=str)
     parser.add_argument('--save_ims', type=str)
-
     args = parser.parse_args()
-
     return args.input_file, args.output_folder, args.save_ims == "yes"
 
 

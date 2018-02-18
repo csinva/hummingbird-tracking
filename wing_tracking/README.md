@@ -20,9 +20,17 @@
 ## preprocessing
 - this code takes a video (.MP4 preferably) as input
 - for fastec videos, images must be combined into a video before running
-    - this can be done by setting parameters in "convert_ims.sh" file and then running ./convert_ims.sh in the terminal 
+    - this can be done by setting parameters in "run_convert_ims.sh" file and then running ./convert_ims.sh in the terminal 
 
-## running
+## wing tracking
 - set parameters in the "run_track.sh" file
 - run "./run_track.sh" file in the terminal
+- this will save out a "thetas.csv" file with the wing angle over time (and optionally some frames to analyze the performance)
+
+
+## viewing angle / finding wingbeats
+ - set parameters in the "run_postprocess.sh" file
+ - run "./run_postprocess.sh" file in the terminal
+ - this will save out an "extrema.csv" file which identifies frame numbers with wingbeats
+
  
