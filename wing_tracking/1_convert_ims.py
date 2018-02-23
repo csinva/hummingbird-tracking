@@ -17,6 +17,8 @@ im_fnames = [img for img in sorted(os.listdir(image_folder)) if img.endswith(".j
 frame = cv2.imread(os.path.join(image_folder, im_fnames[0]))
 height, width, layers = frame.shape
 video = cv2.VideoWriter(video_name, -1, 7, (width, height))
+# fourcc = cv2.VideoWriter_fourcc(*'DIVX')  # 'x264' doesn't work
+# video = cv2.VideoWriter(video_name, fourcc, 7, (width, height))
 
 # load and write images
 for image in im_fnames:
