@@ -1,3 +1,9 @@
+############################### parameters to change ###############################
+csv_dir = "out_test2"  # directory containing output of tracking
+####################################################################################
+
+
+use_args = True
 import numpy as np
 import sys
 from os.path import join as oj
@@ -81,15 +87,18 @@ def parse():
 
 
 if __name__ == '__main__':
+
+    use_args = True
+    if not use_args:
+        csv_dir = 'out_' + vid_id
     # set paths
-    vid_id = 'good'  # fastec_test, fastec_train, good
-    csv_dir = 'out_' + vid_id
-    csv_file = 'thetas_' + vid_id + '.csv'
+    vid_id = 'fastec_test'  # fastec_test, fastec_train, good
+    csv_file = 'thetas.csv'
+    label_file = '../data/top/labels/fastec/' + vid_id + '.csv'
+
     if len(sys.argv) > 1:
         csv_dir, label_file = parse()
-
     fname = oj(csv_dir, csv_file)
-    label_file = '../data/top/labels/fastec/' + vid_id + '.csv'
 
     t, thetas = load_thetas(fname)
     extrema_idxs_pred, yhat = smooth_and_find_extrema(thetas, csv_dir)
@@ -134,5 +143,6 @@ if __name__ == '__main__':
         calc_stats_all(extrema_ts_pred, extrema_ts_labs)
     except Exception as e:
         print('error', e)
+        
     plt.legend()
     plt.show()

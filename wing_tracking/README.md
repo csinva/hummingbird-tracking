@@ -16,21 +16,25 @@
 
 # usage
 - to run any code, first open terminal and cd do the directory containing this file
+- in general, files/folders with spaces are not encouraged
 
-## preprocessing
-- this code takes a video (.MP4 preferably) as input
+## 1 - preprocessing
+- **input: images, output: mp4 video**
 - for fastec videos, images must be combined into a video before running
-    - this can be done by setting parameters in "run_convert_ims.sh" file and then running ./convert_ims.sh in the terminal 
+- this can be done by setting parameters at the top of the `1_convert_ims.py` file and then running `python 1_convert_ims.py` in the terminal 
 
-## wing tracking
-- set parameters in the "run_track.sh" file
-- run "./run_track.sh" file in the terminal
-- this will save out a "thetas.csv" file with the wing angle over time (and optionally some frames to analyze the performance)
+## 2 - wing tracking
+- **input: mp4 video, output: csv file with raw angle per frame**
+- this code takes a video (.MP4 preferably) as input
+- set parameters in the `2_track_wing.py` file
+- run `python 2_track_wing.py` file in the terminal
+- this will save out a `thetas.csv` file with the wing angle over time (and optionally some frames to analyze the performance)
 
 
-## viewing angle / finding wingbeats
- - set parameters in the "run_postprocess.sh" file
- - run "./run_postprocess.sh" file in the terminal
+## 3 - viewing angle / finding wingbeats
+- **input: csv file with angles, output: processed times of wingbeats**
+ - set parameters in the `3_view_thetas.py` file
+ - run `python 3_view_thetas.py` in the terminal
  - this will save out an "extrema.csv" file which identifies frame numbers with wingbeats
 
  
