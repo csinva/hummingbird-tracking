@@ -17,7 +17,6 @@ import numpy as np
 from sklearn.cluster import KMeans
 import imageio
 import cv2
-import argparse
 
 
 # draw two arrows onto the given image
@@ -235,15 +234,6 @@ def track_angle_for_clip(fname, out_dir="out", num_frames=None, num_lines=20, sa
     np.savetxt(oj(out_dir, 'thetas.csv'), thetas, fmt="%3.2f", delimiter=',')
     np.savetxt(oj(out_dir, 'bird_present.csv'), bird_presents, fmt="%3.2f", delimiter=',')
     print('succesfully completed')
-
-
-def parse():
-    parser = argparse.ArgumentParser(description='track hummingbird wings')
-    parser.add_argument('--input_file', type=str)
-    parser.add_argument('--output_folder', type=str)
-    parser.add_argument('--save_ims', type=str)
-    args = parser.parse_args()
-    return args.input_file, args.output_folder, args.save_ims == "yes"
 
 
 if __name__ == "__main__":

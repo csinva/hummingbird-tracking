@@ -23,6 +23,7 @@ def bird_is_drinking(tube_big_motion):
 
 def track_clip(fname, tube_pos, tube_capacity,
                out_dir="out", NUM_FRAMES=None, NUM_LINES=20, save_ims=False):
+    # open video and create background subtractors
     logging.info('tracking %s', fname)
     cap = cv2.VideoCapture(fname)
     fgbg = cv2.createBackgroundSubtractorMOG2()
@@ -32,30 +33,37 @@ def track_clip(fname, tube_pos, tube_capacity,
     # initialize loop
     if NUM_FRAMES is None:
         NUM_FRAMES = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
-        logging.info('num_frames %d', NUM_FRAMES)
+    logging.info('num_frames %d', NUM_FRAMES)
+
+    # make out_dir
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
-    (top, left, bot) = tube_pos
-    x_meniscus, x_tongue, x_beak = 0, 0, 0
+
+    # tube dimensions
+    width, height = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH)), int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+    top, left, bot = tube_pos
+    tube_height = bot - top
+    top_big = max(top - tube_height, 0)  # bounded by 0
+    bot_big = min(bot + tube_height, height - 1)  # bounded by bottom of frame
+    left_big = max(0, left - (width - left) * 2)  # bounded by 0
+
     stats = {}
     points_to_track = ["is_drinking", "beak_tip", "meniscus", "tongue_tip"]
     for point in points_to_track:
         stats[point] = np.zeros((NUM_FRAMES, 1))
+    bars, barsx = [], []
     frame_num = 0
-    ret, frame = cap.read()
+    x_meniscus, x_tongue, x_beak = 0, 0, 0
 
     # loop over frames
+    ret, frame = cap.read()
     while ret and frame_num < NUM_FRAMES:
-        logging.info('frame_num %d', frame_num)
+        if frame_num % 100 == 0:
+            logging.info('frame_num %d', frame_num)
 
         # big tube for drinking
-        tube_height = bot - top
-        top_big = max(top - tube_height, 0)  # bounded by 0
-        bot_big = min(bot + tube_height, frame.shape[0] - 1)  # bounded by bottom of frame
-        left_big = max(0, left - (frame.shape[1] - left) * 2)  # bounded by 0
         tube_big = frame[top_big:bot_big, left_big:left]
         tube_big_motion = fgbg_tube_big.apply(tube_big)
-
         bird_drinking = bird_is_drinking(tube_big_motion)
         stats["is_drinking"][frame_num] = bird_drinking
         if bird_drinking:
@@ -74,30 +82,32 @@ def track_clip(fname, tube_pos, tube_capacity,
             # track meniscus
             x_meniscus = meniscus.meniscus_from_tube_motion(tube_motion, x_meniscus)
             stats["meniscus"][frame_num] = x_meniscus
+            bars.append(meniscus.simple_meniscus(tube_motion)[0])
+            barsx.append(meniscus.simple_meniscus(tube_motion)[1])
 
             # track tongue tip
-            tube_motion_rgb = cv2.cvtColor(tube_motion, cv2.COLOR_GRAY2RGB)  # just for drawing
-            x_tongue = tongue.tongue_from_tube_motion(tube_motion, x_meniscus, x_tongue)
-            stats["tongue_tip"][frame_num] = x_tongue
+            # x_tongue = tongue.tongue_from_tube_motion(tube_motion, x_meniscus, x_tongue)
+            # stats["tongue_tip"][frame_num] = x_tongue
 
             # save
-            if save_ims:
+            if save_ims and frame_num % 5 == 0:
                 # colorize
                 frame_motion = fgbg.apply(frame)
                 frame_motion_rgb = cv2.cvtColor(frame_motion, cv2.COLOR_GRAY2RGB)
                 tube_big_motion_rgb = cv2.cvtColor(tube_big_motion, cv2.COLOR_GRAY2RGB)
+                tube_motion_rgb = cv2.cvtColor(tube_motion, cv2.COLOR_GRAY2RGB)  # just for drawing
 
                 # draw things
                 cv2.circle(frame, center=(left, top), radius=6, color=(255, 0, 0), thickness=5)
                 cv2.circle(frame, center=(left, bot), radius=6, color=(255, 0, 0), thickness=5)
-                cv2.circle(tube_motion_rgb, center=(int(x_meniscus), int(10)),
-                           radius=15, color=(255, 0, 0), thickness=5)
+                # cv2.circle(tube_motion_rgb, center=(int(x_meniscus), int(10)),
+                #            radius=15, color=(255, 0, 0), thickness=5)
 
                 # imageio.imwrite(oj(out_dir, 'frame_' + str(frame_num) + '.jpg'), frame_motion_rgb)
-                imageio.imwrite(oj(out_dir, 'orig_frame_' + str(frame_num) + '.jpg'), frame)
+                # imageio.imwrite(oj(out_dir, 'orig_frame_' + str(frame_num) + '.jpg'), frame)
                 # imageio.imwrite(oj(out_dir, 'tube_' + str(frame_num) + '.jpg'), tube)
-                # imageio.imwrite(oj(out_dir, 'tube_motion_' + str(frame_num) + '.jpg'), tube_motion_rgb)
-                imageio.imwrite(oj(out_dir, 'tube_big_' + str(frame_num) + '.jpg'), tube_big)
+                imageio.imwrite(oj(out_dir, 'tube_motion_' + str(frame_num) + '.jpg'), tube_motion_rgb)
+                # imageio.imwrite(oj(out_dir, 'tube_big_' + str(frame_num) + '.jpg'), tube_big)
                 # imageio.imwrite(oj(out_dir, 'tube_big_motion_' + str(frame_num) + '.jpg'), tube_big_motion_rgb)
                 pass
 
@@ -111,6 +121,15 @@ def track_clip(fname, tube_pos, tube_capacity,
 
         # scaling
     #    meniscus_arr *= tube_capacity * ... # todo: this needs to be fixed
+
+    # save bars
+    bars = np.array(bars)
+    print(bars.shape)
+    np.savetxt(oj(out_dir, 'bars' + '.csv'), bars, fmt="%3.2f", delimiter=',')
+
+    barsx = np.array(barsx).transpose()
+    print(barsx.shape)
+    np.savetxt(oj(out_dir, 'barsx' + '.csv'), barsx, fmt="%3.2f", delimiter=',')
 
     # saving
     for point in stats:
@@ -132,9 +151,9 @@ if __name__ == "__main__":
     logging.basicConfig(stream=sys.stdout, level=logging.INFO, format='%(message)s')
     data_folder = '/Users/chandan/drive/research/vision/hummingbird/data'
     tube_pos_a = (110, 1230, 260)  # (top, left, bot)
-    tube_pos_b = (84, 485, 126)
+    # tube_pos_b = (84, 485, 126)
     tube_capacity = 300  # in mL
-    fname = oj(data_folder, 'side', 'b.mov')
-    out_dir = "out"
-    track_clip(fname, tube_pos_b, tube_capacity,
-               out_dir=out_dir, NUM_FRAMES=30, save_ims=True)
+    fname = oj(data_folder, 'side', 'a.mov')
+    out_dir = "out_a"
+    track_clip(fname, tube_pos_a, tube_capacity,
+               out_dir=out_dir, NUM_FRAMES=None, save_ims=False)

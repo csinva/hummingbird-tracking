@@ -78,26 +78,18 @@ def calc_stats_all(pred, lab):
     print('mistakes', pred[mistakes], len(mistakes), pred.size)
 
 
-def parse():
-    parser = argparse.ArgumentParser(description='track hummingbird wings')
-    parser.add_argument('--csv_dir', type=str)
-    parser.add_argument('--label_file', type=str, default="")
-    args = parser.parse_args()
-    return args.csv_dir, args.label_file
-
-
 if __name__ == '__main__':
 
     use_args = True
-    if not use_args:
-        csv_dir = 'out_' + vid_id
+
     # set paths
     vid_id = 'fastec_test'  # fastec_test, fastec_train, good
     csv_file = 'thetas.csv'
     label_file = '../data/top/labels/fastec/' + vid_id + '.csv'
+    if not use_args:
+        csv_dir = 'out_' + vid_id
 
-    if len(sys.argv) > 1:
-        csv_dir, label_file = parse()
+    # get resulting fname
     fname = oj(csv_dir, csv_file)
 
     t, thetas = load_thetas(fname)
@@ -143,6 +135,6 @@ if __name__ == '__main__':
         calc_stats_all(extrema_ts_pred, extrema_ts_labs)
     except Exception as e:
         print('error', e)
-        
+
     plt.legend()
     plt.show()
