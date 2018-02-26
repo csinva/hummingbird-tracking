@@ -31,6 +31,7 @@ def track_clip(fname, tube_pos, tube_capacity,
     fgbg_tube_big = cv2.createBackgroundSubtractorMOG2()
 
     # initialize loop
+    frame_num = 0
     if NUM_FRAMES is None:
         NUM_FRAMES = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
     logging.info('num_frames %d', NUM_FRAMES)
@@ -47,13 +48,12 @@ def track_clip(fname, tube_pos, tube_capacity,
     bot_big = min(bot + tube_height, height - 1)  # bounded by bottom of frame
     left_big = max(0, left - (width - left) * 2)  # bounded by 0
 
+    # stats to track
     stats = {}
-    points_to_track = ["is_drinking", "beak_tip", "meniscus", "tongue_tip"]
+    points_to_track = ["is_drinking", "beak_tip", "tongue_tip"]
     for point in points_to_track:
         stats[point] = np.zeros((NUM_FRAMES, 1))
     bars, barsx = [], []
-    frame_num = 0
-    x_meniscus, x_tongue, x_beak = 0, 0, 0
 
     # loop over frames
     ret, frame = cap.read()
@@ -80,8 +80,6 @@ def track_clip(fname, tube_pos, tube_capacity,
                                                    templateWindowSize=7, searchWindowSize=21)
 
             # track meniscus
-            x_meniscus = meniscus.meniscus_from_tube_motion(tube_motion, x_meniscus)
-            stats["meniscus"][frame_num] = x_meniscus
             bars.append(meniscus.simple_meniscus(tube_motion)[0])
             barsx.append(meniscus.simple_meniscus(tube_motion)[1])
 
@@ -109,11 +107,6 @@ def track_clip(fname, tube_pos, tube_capacity,
                 imageio.imwrite(oj(out_dir, 'tube_motion_' + str(frame_num) + '.jpg'), tube_motion_rgb)
                 # imageio.imwrite(oj(out_dir, 'tube_big_' + str(frame_num) + '.jpg'), tube_big)
                 # imageio.imwrite(oj(out_dir, 'tube_big_motion_' + str(frame_num) + '.jpg'), tube_big_motion_rgb)
-                pass
-
-        # bird is not drinking
-        else:
-            x_meniscus, x_tongue, x_beak = 0, 0, 0
 
         # read next frame
         frame_num += 1
@@ -121,15 +114,6 @@ def track_clip(fname, tube_pos, tube_capacity,
 
         # scaling
     #    meniscus_arr *= tube_capacity * ... # todo: this needs to be fixed
-
-    # save bars
-    bars = np.array(bars)
-    print(bars.shape)
-    np.savetxt(oj(out_dir, 'bars' + '.csv'), bars, fmt="%3.2f", delimiter=',')
-
-    barsx = np.array(barsx).transpose()
-    print(barsx.shape)
-    np.savetxt(oj(out_dir, 'barsx' + '.csv'), barsx, fmt="%3.2f", delimiter=',')
 
     # saving
     for point in stats:
@@ -139,6 +123,13 @@ def track_clip(fname, tube_pos, tube_capacity,
         plt.ylabel(point)
         plt.savefig(oj(out_dir, point + '.png'))
         np.savetxt(oj(out_dir, point + '.csv'), stats[point], fmt="%3.2f", delimiter=',')
+    bars = np.array(bars)
+    print(bars.shape)
+    np.savetxt(oj(out_dir, 'bars' + '.csv'), bars, fmt="%3.2f", delimiter=',')
+
+    barsx = np.array(barsx).transpose()
+    print(barsx.shape)
+    np.savetxt(oj(out_dir, 'barsx' + '.csv'), barsx, fmt="%3.2f", delimiter=',')
 
     # release video
     cap.release()
