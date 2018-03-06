@@ -88,7 +88,7 @@ def track_clip(fname, tube_pos, tube_capacity,
             # stats["tongue_tip"][frame_num] = x_tongue
 
             # save
-            if save_ims and frame_num % 5 == 0:
+            if save_ims and frame_num % 2 == 0:
                 # colorize
                 frame_motion = fgbg.apply(frame)
                 frame_motion_rgb = cv2.cvtColor(frame_motion, cv2.COLOR_GRAY2RGB)
@@ -103,7 +103,7 @@ def track_clip(fname, tube_pos, tube_capacity,
 
                 # imageio.imwrite(oj(out_dir, 'frame_' + str(frame_num) + '.jpg'), frame_motion_rgb)
                 # imageio.imwrite(oj(out_dir, 'orig_frame_' + str(frame_num) + '.jpg'), frame)
-                # imageio.imwrite(oj(out_dir, 'tube_' + str(frame_num) + '.jpg'), tube)
+                imageio.imwrite(oj(out_dir, 'tube_' + str(frame_num) + '.jpg'), tube)
                 imageio.imwrite(oj(out_dir, 'tube_motion_' + str(frame_num) + '.jpg'), tube_motion_rgb)
                 # imageio.imwrite(oj(out_dir, 'tube_big_' + str(frame_num) + '.jpg'), tube_big)
                 # imageio.imwrite(oj(out_dir, 'tube_big_motion_' + str(frame_num) + '.jpg'), tube_big_motion_rgb)
@@ -141,10 +141,10 @@ if __name__ == "__main__":
     # hyperparams - denoising_param, conf_thresh, jump_thresh
     logging.basicConfig(stream=sys.stdout, level=logging.INFO, format='%(message)s')
     data_folder = '/Users/chandan/drive/research/vision/hummingbird/data'
-    tube_pos_a = (110, 1230, 260)  # (top, left, bot)
-    # tube_pos_b = (84, 485, 126)
+    # tube_pos_a = (110, 1230, 260)  # (top, left, bot)
+    tube_pos_b = (84, 485, 126)
     tube_capacity = 300  # in mL
-    fname = oj(data_folder, 'side', 'a.mov')
+    fname = oj(data_folder, 'side', 'b.mov')
     out_dir = "out_a"
-    track_clip(fname, tube_pos_a, tube_capacity,
-               out_dir=out_dir, NUM_FRAMES=None, save_ims=False)
+    track_clip(fname, tube_pos_b, tube_capacity,
+               out_dir=out_dir, NUM_FRAMES=None, save_ims=True)

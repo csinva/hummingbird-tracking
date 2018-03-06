@@ -5,9 +5,10 @@ csv_dir = "out_test2"  # directory containing output of tracking
 
 use_args = True
 import numpy as np
-import sys
+import sys, os
 from os.path import join as oj
 import matplotlib.pyplot as plt
+sys.path.insert(1, os.path.join(sys.path[0], '..'))
 import util
 import argparse
 from scipy.signal import argrelextrema
