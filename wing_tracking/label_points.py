@@ -20,14 +20,14 @@ color = np.random.randint(0, 255, (100, 3))
 ret, old_frame = cap.read()
 old_gray = cv2.cvtColor(old_frame, cv2.COLOR_BGR2GRAY)
 pt_num = 0
-p0 = np.ones(shape=(n_points, 1, 2), dtype=np.float32)
+pts = np.ones(shape=(n_points, 1, 2), dtype=np.float32)
 mask = np.zeros_like(old_frame)  # create a mask image for drawing purposes
 
 
 def click_and_crop(event, x, y, flags, param):
     global old_gray
     global pt_num
-    global p0
+    global pts
     if event == cv2.EVENT_LBUTTONDOWN:
         print(pt_num, 'click! ', x, y)
         old_gray = cv2.circle(old_gray, (x, y), 5, 0, -1)
@@ -60,11 +60,11 @@ while True:
     frame_gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
 
     # calculate optical flow
-    p1, st, err = cv2.calcOpticalFlowPyrLK(old_gray, frame_gray, p0, None, **lk_params)
+    p1, st, err = cv2.calcOpticalFlowPyrLK(old_gray, frame_gray, pts, None, **lk_params)
 
     # Select good points
     good_new = p1[st == 1]
-    good_old = p0[st == 1]
+    good_old = pts[st == 1]
 
     # draw the tracks
     for i, (new, old) in enumerate(zip(good_new, good_old)):
@@ -80,7 +80,7 @@ while True:
 
     # Now update the previous frame and previous points
     old_gray = frame_gray.copy()
-    p0 = good_new.reshape(-1, 1, 2)
+    pts = good_new.reshape(-1, 1, 2)
 
 cv2.destroyAllWindows()
 cap.release()

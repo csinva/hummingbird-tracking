@@ -91,8 +91,8 @@ def track_clip(fname, tube_pos, tube_capacity,
             if save_ims and frame_num % 2 == 0:
                 # colorize
                 frame_motion = fgbg.apply(frame)
-                frame_motion_rgb = cv2.cvtColor(frame_motion, cv2.COLOR_GRAY2RGB)
-                tube_big_motion_rgb = cv2.cvtColor(tube_big_motion, cv2.COLOR_GRAY2RGB)
+                # frame_motion_rgb = cv2.cvtColor(frame_motion, cv2.COLOR_GRAY2RGB)
+                # tube_big_motion_rgb = cv2.cvtColor(tube_big_motion, cv2.COLOR_GRAY2RGB)
                 tube_motion_rgb = cv2.cvtColor(tube_motion, cv2.COLOR_GRAY2RGB)  # just for drawing
 
                 # draw things
