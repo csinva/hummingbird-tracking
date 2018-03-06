@@ -9,12 +9,9 @@ import sys
 import os
 
 sys.path.insert(1, os.path.join(sys.path[0], '..'))
-import util
 from os.path import join as oj
 import matplotlib.pyplot as plt
 import matplotlib
-import cv2
-import scipy.misc
 
 cmap = matplotlib.cm.Greys
 cmap.set_bad(color='red')
@@ -27,14 +24,15 @@ def replot(meniscus_arr):
     idx = np.min(np.arange(0, bars.shape[0])[np.nonzero(meniscus_arr)])  # first nonzero idx
     first_val = meniscus_arr[idx]
 
-    xs = range(len(meniscus_arr))
+    xs = np.arange(len(meniscus_arr))
     arr = np.interp(x=xs,
-                    xp=xs[~(meniscus_arr == 0)],
-                    fp=meniscus_arr[~(meniscus_arr == 0)])
+                    xp=xs[meniscus_arr > 0],
+                    fp=meniscus_arr[meniscus_arr > 0])
     for i in range(idx):
         arr[i] = first_val
     p2.set_xdata(arr[::-1])
     fig.canvas.draw()
+    return arr
 
 
 def onclick(event):
@@ -43,7 +41,6 @@ def onclick(event):
     global ax1
 
     t, x = int(event.ydata), int(event.xdata)
-    print('click!')
     meniscus_arr[t] = x
     replot(meniscus_arr)
     # ax1.scatter([float(x)], [float(t)], 'o', zorder=2)
@@ -75,6 +72,9 @@ if __name__ == '__main__':
     ax2.invert_yaxis()
     plt.show()
 
+    meniscus_arr = replot(meniscus_arr)
+    np.savetxt(oj(csv_dir, 'meniscus.csv'), meniscus_arr, delimiter=',')
+    print('saved ', oj(csv_dir, 'meniscus.csv'))
 
 
     # could use maxes or means
