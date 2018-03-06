@@ -14,10 +14,6 @@
 - first few frames are sometimes not very good
 - more than one bird
 
-# usage
-- to run any code, first open terminal and cd do the directory containing this file
-- in general, files/folders with spaces are not encouraged
-
 ## 1 - preprocessing
 - **input: images, output: mp4 video**
 - for fastec videos, images must be combined into a video before running

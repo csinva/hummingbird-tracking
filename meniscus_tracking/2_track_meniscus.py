@@ -1,17 +1,14 @@
 import imageio
 import numpy as np
-from os.path import join as oj
-import os, cv2, math
+import os, cv2
 import matplotlib.pyplot as plt
 import logging, sys
-from scipy import misc
-from skimage.feature import match_template
-
-import beak
 from os.path import join as oj
 
 sys.path.insert(1, os.path.join(sys.path[0], '..'))
+import params
 import util
+import beak
 import meniscus
 import tongue
 
@@ -25,11 +22,11 @@ def bird_is_drinking(tube_big_motion):
         return False
 
 
-def track_clip(fname, tube_pos, tube_capacity,
+def track_clip(vid_fname, tube_pos, tube_capacity,
                out_dir="out", NUM_FRAMES=None, NUM_LINES=20, save_ims=False):
     # open video and create background subtractors
-    logging.info('tracking %s', fname)
-    cap = cv2.VideoCapture(fname)
+    logging.info('tracking %s', vid_fname)
+    cap = cv2.VideoCapture(vid_fname)
     fgbg = cv2.createBackgroundSubtractorMOG2()
     fgbg_tube = cv2.createBackgroundSubtractorMOG2()
 
@@ -42,14 +39,6 @@ def track_clip(fname, tube_pos, tube_capacity,
     # make out_dir
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
-
-    # tube dimensions
-    # width, height = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH)), int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-    # top, left, bot = tube_pos
-    # tube_height = bot - top
-    # top_big = max(top - tube_height, 0)  # bounded by 0
-    # bot_big = min(bot + tube_height, height - 1)  # bounded by bottom of frame
-    # left_big = max(0, left - (width - left) * 2)  # bounded by 0
 
     # stats to track
     stats = {}
@@ -88,7 +77,7 @@ def track_clip(fname, tube_pos, tube_capacity,
             # stats["tongue_tip"][frame_num] = x_tongue
 
             # save
-            if save_ims and frame_num % 2 == 0:
+            if save_ims and frame_num % 4 == 0:
                 # colorize
                 frame_motion = fgbg.apply(frame)
                 # frame_motion_rgb = cv2.cvtColor(frame_motion, cv2.COLOR_GRAY2RGB)
@@ -122,14 +111,14 @@ def track_clip(fname, tube_pos, tube_capacity,
         plt.xlabel('Frame number')
         plt.ylabel(point)
         plt.savefig(oj(out_dir, point + '.png'))
-        np.savetxt(oj(out_dir, point + '.csv'), stats[point], fmt="%3.2f", delimiter=',')
+        np.savetxt(oj(out_dir, point + '.csv'), stats[point], fmt="%.2f", delimiter=',')
 
     # save bars
     bars = np.array(bars)
-    np.savetxt(oj(out_dir, 'bars' + '.csv'), bars, fmt="%3.2f", delimiter=',')
+    np.savetxt(oj(out_dir, 'bars' + '.csv'), bars, fmt="%.2f", delimiter=',')
 
     barsx = np.array(barsx).transpose()
-    np.savetxt(oj(out_dir, 'barsx' + '.csv'), barsx, fmt="%3.2f", delimiter=',')
+    np.savetxt(oj(out_dir, 'barsx' + '.csv'), barsx, fmt="%.2f", delimiter=',')
 
     # release video
     cap.release()
@@ -140,17 +129,19 @@ def track_clip(fname, tube_pos, tube_capacity,
 if __name__ == "__main__":
     # hyperparams - denoising_param, conf_thresh, jump_thresh
     logging.basicConfig(stream=sys.stdout, level=logging.INFO, format='%(message)s')
-    data_folder = '/Users/chandan/drive/research/vision/hummingbird/data'
+    # data_folder = '/Users/chandan/drive/research/vision/hummingbird/data'
 
-    fname = oj(data_folder, 'side', 'b.mov')
-    out_dir = "out_b"
+    # vid_fname = '/Users/chandan/drive/research/vision/hummingbird/data/side/b.mov'  # name of input video
+
+    # fname = oj(data_folder, 'side', 'b.mov')
+    # out_dir = "out_b"
 
     # read in tube_pos
     tube_capacity = 300  # in mL
-    tube_pos = np.loadtxt(oj(out_dir, 'pos_tube.csv'),
+    tube_pos = np.loadtxt(oj(params.out_dir, 'pos_tube.csv'),
                           delimiter=',')  # tube corners (topleft, topright, botright, botleft)
     print('tube_pos', tube_pos)
 
     # track clip
-    track_clip(fname, tube_pos, tube_capacity,
-               out_dir=out_dir, NUM_FRAMES=None, save_ims=False)
+    track_clip(params.vid_fname, tube_pos, tube_capacity,
+               out_dir=params.out_dir, NUM_FRAMES=None, save_ims=False)

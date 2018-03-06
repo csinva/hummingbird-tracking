@@ -1,22 +1,14 @@
-############################### parameters to change ###############################
-input_file = "video.mp4"  # name of video to track
-output_folder = "out_test2"  # folder to store output
-save_ims = "yes"  # whether or not to save images out
-####################################################################################
-
-
-use_args = True
 import math
 from math import degrees as deg
 from math import radians
 from os.path import join as oj
 import os
-import sys
 import matplotlib.pyplot as plt
 import numpy as np
 from sklearn.cluster import KMeans
 import imageio
 import cv2
+import params
 
 
 # draw two arrows onto the given image
@@ -129,10 +121,10 @@ def translate_and_rotate_frame(frame, angle=-40, center=(758, 350)):
 
 # given a video filename and some parameters, calculates the angle between wings and saves to png and csv
 # output: theta is the angle measure from one wing, around the back of the bird, to the other wing
-def track_angle_for_clip(fname, out_dir="out", num_frames=None, num_lines=20, save_ims=False):
+def track_angle_for_clip(vid_fname, out_dir="out", num_frames=None, num_lines=20, save_ims=False):
     # initialize video capture
-    print('tracking', fname)
-    cap = cv2.VideoCapture(fname)
+    print('tracking', vid_fname)
+    cap = cv2.VideoCapture(vid_fname)
     fgbg = cv2.createBackgroundSubtractorMOG2()
 
     # initialize loop
@@ -237,14 +229,5 @@ def track_angle_for_clip(fname, out_dir="out", num_frames=None, num_lines=20, sa
 
 
 if __name__ == "__main__":
-    if use_args:
-        fname = input_file = "video.mp4"  # name of video to track
-        out_dir = output_folder = "out_test2"  # folder to store output
-        save_ims = save_ims
-    else:
-        vid_id = 'fastec_test'  # 0075, good, fastec_test
-        fname = oj('/Users/chandan/drive/research/vision/hummingbird/data', 'top', 'PIC_' + vid_id + '.MP4')
-        out_dir = 'out_' + vid_id + '_ims'
-        save_ims = "yes"
-
-    track_angle_for_clip(fname, out_dir=out_dir, num_frames=5000, save_ims=True)  # NUM_FRAMES=20
+    track_angle_for_clip(params.vid_fname, out_dir=params.out_dir,
+                         num_frames=5000, save_ims=params.save_ims)  # NUM_FRAMES=20

@@ -1,17 +1,13 @@
-############################### parameters to change ###############################
-csv_dir = "out_test2"  # directory containing output of tracking
-####################################################################################
-
-
 use_args = True
 import numpy as np
 import sys, os
 from os.path import join as oj
 import matplotlib.pyplot as plt
+
 sys.path.insert(1, os.path.join(sys.path[0], '..'))
 import util
-import argparse
 from scipy.signal import argrelextrema
+import params
 
 
 def load_thetas(fname):
@@ -87,6 +83,7 @@ if __name__ == '__main__':
     vid_id = 'fastec_test'  # fastec_test, fastec_train, good
     csv_file = 'thetas.csv'
     label_file = '../data/top/labels/fastec/' + vid_id + '.csv'
+    csv_dir = params.out_dir
     if not use_args:
         csv_dir = 'out_' + vid_id
 

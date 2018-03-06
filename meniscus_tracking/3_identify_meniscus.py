@@ -1,12 +1,8 @@
-############################### parameters to change ###############################
-csv_dir = "out_b"  # directory containing output of tracking
-####################################################################################
-
-
 use_args = True
 import numpy as np
 import sys
 import os
+import params
 
 sys.path.insert(1, os.path.join(sys.path[0], '..'))
 from os.path import join as oj
@@ -61,6 +57,7 @@ if __name__ == '__main__':
     plt.scatter([20], [20], zorder=2)
     plt.ylabel('frame number')
     plt.xlabel('meniscus point')
+    plt.title('click on the meniscus')
     cid = fig.canvas.mpl_connect('button_press_event', onclick)
 
     # ax2
@@ -69,12 +66,13 @@ if __name__ == '__main__':
                    'r-')  # Returns a tuple of line objects, thus the comma
     plt.xlim(0, bars.shape[1])
     plt.ylim(0, bars.shape[0])
+    plt.title('inferred meniscus over time')
     ax2.invert_yaxis()
     plt.show()
 
     meniscus_arr = replot(meniscus_arr)
-    np.savetxt(oj(csv_dir, 'meniscus.csv'), meniscus_arr, delimiter=',')
-    print('saved ', oj(csv_dir, 'meniscus.csv'))
+    np.savetxt(oj(params.out_dir, 'meniscus.csv'), meniscus_arr, delimiter=',', fmt='%.2f')
+    print('saved ', oj(params.out_dir, 'meniscus.csv'))
 
 
     # could use maxes or means

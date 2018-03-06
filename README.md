@@ -16,6 +16,7 @@ Code for tracking things in hummingbird videos.
 - code / documentation for functions is located within subfolders
 - "wing_tracking" folder finds angle over time from top view videos
 - "meniscus_tracking" folder find meniscus over time from side view videos
-- in windows, it's best to run the bash scripts using git bash
+- to run any code, first open terminal and cd do the directory containing this file
+- in general, files/folders with spaces are not encouraged
 
 
