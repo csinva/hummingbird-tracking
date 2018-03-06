@@ -61,7 +61,6 @@ if __name__ == '__main__':
     # plot max along tube vs time
     bars_sum = np.sum(bars, axis=1)
     bars_sum[0] = 0
-    plt.subplot(122)
     plt.plot(bars_sum, 'o', alpha=0.3, color=util.cs[0], label='raw points')
     print(bars_sum)
     plt.xlabel('frame num')
