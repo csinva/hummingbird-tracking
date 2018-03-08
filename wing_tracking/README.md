@@ -14,6 +14,9 @@
 - first few frames are sometimes not very good
 - more than one bird
 
+# parameters
+- set parameters in the `params.py` file
+
 ## 1 - preprocessing
 - **input: images, output: mp4 video**
 - for fastec videos, images must be combined into a video before running
@@ -22,14 +25,12 @@
 ## 2 - wing tracking
 - **input: mp4 video, output: csv file with raw angle per frame**
 - this code takes a video (.MP4 preferably) as input
-- set parameters in the `2_track_wing.py` file
 - run `python 2_track_wing.py` file in the terminal
 - this will save out a `thetas.csv` file with the wing angle over time (and optionally some frames to analyze the performance)
 
 
 ## 3 - viewing angle / finding wingbeats
 - **input: csv file with angles, output: processed times of wingbeats**
- - set parameters in the `3_view_thetas.py` file
  - run `python 3_view_thetas.py` in the terminal
  - this will save out an "extrema.csv" file which identifies frame numbers with wingbeats
 

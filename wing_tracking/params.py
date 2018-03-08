@@ -1,5 +1,3 @@
-################## set parameters here ##################
-
 # params for 1_convert_ims
 image_folder = '../data/top/fastec_train_subset'  # folder containing images
 horizontal_flip = 'yes'  # change this to 'yes' to flip video otherwise leave it as 'no'

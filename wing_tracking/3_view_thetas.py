@@ -76,22 +76,14 @@ def calc_stats_all(pred, lab):
 
 
 if __name__ == '__main__':
-
-    use_args = True
-
     # set paths
     vid_id = 'fastec_test'  # fastec_test, fastec_train, good
-    csv_file = 'thetas.csv'
-    label_file = '../data/top/labels/fastec/' + vid_id + '.csv'
-    csv_dir = params.out_dir
-    if not use_args:
-        csv_dir = 'out_' + vid_id
+    label_file = '../data/top/labels/fastec/fastec_test.csv'
 
     # get resulting fname
-    fname = oj(csv_dir, csv_file)
-
-    t, thetas = load_thetas(fname)
-    extrema_idxs_pred, yhat = smooth_and_find_extrema(thetas, csv_dir)
+    thetas_fname = oj(params.out_dir, 'thetas.csv')
+    t, thetas = load_thetas(thetas_fname)
+    extrema_idxs_pred, yhat = smooth_and_find_extrema(thetas, params.out_dir)
     extrema_ts_pred = t[extrema_idxs_pred]
 
     # plotting

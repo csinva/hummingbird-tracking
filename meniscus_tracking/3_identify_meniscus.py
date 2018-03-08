@@ -15,7 +15,6 @@ cmap.set_bad(color='red')
 
 def replot(meniscus_arr):
     global p2
-    arr = np.copy(meniscus_arr)
     # fill in meniscus_arr
     idx = np.min(np.arange(0, bars.shape[0])[np.nonzero(meniscus_arr)])  # first nonzero idx
     first_val = meniscus_arr[idx]
@@ -46,28 +45,26 @@ def onclick(event):
 
 if __name__ == '__main__':
     # load data
-    bars = np.loadtxt(oj(csv_dir, 'bars.csv'), delimiter=',')
-    print(bars.shape)
+    bars = np.loadtxt(oj(params.out_dir, 'bars.csv'), delimiter=',')
     meniscus_arr = np.zeros(bars.shape[0])
 
     # matplotlib show ims
-    fig = plt.figure(figsize=(6, 8))
-    ax1 = fig.add_subplot(121)
-    ax1.imshow(bars, zorder=1)
+    fig = plt.figure(figsize=(12, 8))
+    ax = fig.add_subplot(111)
+    ax.imshow(bars, zorder=1, aspect='auto')
     plt.scatter([20], [20], zorder=2)
     plt.ylabel('frame number')
     plt.xlabel('meniscus point')
-    plt.title('click on the meniscus')
+    plt.title('click on the meniscus over time, red line shows inferred meniscus')
     cid = fig.canvas.mpl_connect('button_press_event', onclick)
 
     # ax2
-    ax2 = fig.add_subplot(122)
-    p2, = ax2.plot(meniscus_arr, np.arange(bars.shape[0], 0, -1),
-                   'r-')  # Returns a tuple of line objects, thus the comma
+    # ax2 = fig.add_subplot(122)
+    p2, = ax.plot(meniscus_arr, np.arange(bars.shape[0], 0, -1),
+                  'r-')  # Returns a tuple of line objects, thus the comma
     plt.xlim(0, bars.shape[1])
     plt.ylim(0, bars.shape[0])
-    plt.title('inferred meniscus over time')
-    ax2.invert_yaxis()
+    ax.invert_yaxis()
     plt.show()
 
     meniscus_arr = replot(meniscus_arr)

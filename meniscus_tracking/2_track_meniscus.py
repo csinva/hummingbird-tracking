@@ -144,4 +144,4 @@ if __name__ == "__main__":
 
     # track clip
     track_clip(params.vid_fname, tube_pos, tube_capacity,
-               out_dir=params.out_dir, NUM_FRAMES=None, save_ims=False)
+               out_dir=params.out_dir, NUM_FRAMES=None, save_ims=params.save_ims)
