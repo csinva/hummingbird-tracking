@@ -3,7 +3,7 @@ image_folder = '../data/top/fastec_train_subset'  # folder containing images
 horizontal_flip = 'yes'  # change this to 'yes' to flip video otherwise leave it as 'no'
 
 # shared params for 1_convert_ims + 2_track_wing.py
-vid_fname = 'video.mp4'  # name of video to make from images
+vid_fname = 'fastec_test.mp4'  # name of video to make from images
 
 # params for 2_track_wing.py
 save_ims = 'yes'  # whether or not to save images out

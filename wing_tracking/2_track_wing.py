@@ -9,7 +9,7 @@ from sklearn.cluster import KMeans
 import imageio
 import cv2
 import params
-
+from tqdm import tqdm
 
 # draw two arrows onto the given image
 def plot_endpoints(im_rgb, start1, start2, end1, end2):
@@ -142,7 +142,7 @@ def track_angle_for_clip(vid_fname, out_dir="out", num_frames=None, num_lines=20
     print('num_frames', num_frames, 'num_frames_total', num_frames_total)
 
     # iterate
-    while ret and frame_num < num_frames:  # and frame_num < 47:  # num_frames:
+    for frame_num in tqdm(range(num_frames)):
         # read frame
         ret, frame = cap.read()
         # frame = translate_and_rotate_frame(frame)
@@ -211,7 +211,6 @@ def track_angle_for_clip(vid_fname, out_dir="out", num_frames=None, num_lines=20
                         imageio.imwrite(oj(out_dir, 'frame_' + str(frame_num) + '.jpg'), frame)
         except Exception as e:
             print('error', e)
-        frame_num += 1
 
     # release video
     cap.release()
