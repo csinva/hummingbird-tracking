@@ -2,6 +2,8 @@ import numpy as np
 from math import factorial
 import matplotlib.pyplot as plt
 import cv2
+import logging
+import os
 
 cs = ['#e41a1c', '#377eb8', '#4daf4a', '#984ea3', '#ff7f00']
 
@@ -128,3 +130,42 @@ def four_point_transform(image, pts):
 
     # return the warped image
     return warped
+
+
+def annotate_vid_with_frame_num(fname, out_file="out", NUM_FRAMES=None):
+    # open video and create background subtractors
+    logging.info('tracking %s', fname)
+    cap = cv2.VideoCapture(fname)
+
+    # initialize loop
+    frame_num = 0
+    if NUM_FRAMES is None:
+        NUM_FRAMES = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+    logging.info('num_frames %d', NUM_FRAMES)
+
+    # make out_dir
+    if not os.path.exists(os.path.dirname(os.path.abspath(out_file))):
+        os.makedirs(os.path.dirname(os.path.abspath(out_file)))
+
+    # remove file if it exists
+    if os.path.exists(out_file):
+        os.remove(out_file)
+
+    # tube dimensions
+    width, height = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH)), int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+    video = cv2.VideoWriter(out_file, -1, 7, (width, height))
+
+    # loop over frames
+    ret, frame = cap.read()
+    while ret and frame_num < NUM_FRAMES:
+        if frame_num % 100 == 0:
+            logging.info('frame_num %d', frame_num)
+        # read next frame
+        frame_num += 1
+        ret, frame = cap.read()
+
+        cv2.putText(frame, "frame_num: %d" % (frame_num),
+                    (20, 40), cv2.FONT_HERSHEY_SIMPLEX, fontScale=1, color=(0, 255, 0))
+        video.write(frame)
+
+    video.release()
