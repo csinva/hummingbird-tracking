@@ -26,7 +26,7 @@
 - **input: mp4 video, output: csv file with unprocessed meniscus tracking**
 - this code takes a video (.MP4 preferably) as input + tube corner coordinates
 - run `python 2_track_meniscus.py` file in the terminal
-- this will save out a `bars.csv` file with the raw meniscus tracking over time
+- this will save out a `unprocessed_meniscus.csv` file with the raw meniscus tracking over time
 
 ## 3 - identify meniscus
 - **input: csv file with meniscus tracking, output: csv file with actual meniscus**

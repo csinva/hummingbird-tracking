@@ -3,8 +3,8 @@ import params
 import os
 
 # remove file if it exists
-if os.path.exists(params.video_name):
-    os.remove(params.video_name)
+if os.path.exists(params.vid_fname):
+    os.remove(params.vid_fname)
 
 # get fnames and create writer
 im_fnames = [img for img in sorted(os.listdir(params.image_folder)) if img.endswith(".jpg")]
@@ -23,3 +23,5 @@ for image in im_fnames:
 
 cv2.destroyAllWindows()
 video.release()
+
+print('Success! Converted images in folder', params.image_folder, 'to movie at', params.vid_fname)

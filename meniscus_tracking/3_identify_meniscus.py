@@ -45,7 +45,7 @@ def onclick(event):
 
 if __name__ == '__main__':
     # load data
-    bars = np.loadtxt(oj(params.out_dir, 'bars.csv'), delimiter=',')
+    bars = np.loadtxt(oj(params.out_dir, 'unprocessed_meniscus.csv'), delimiter=',')
     meniscus_arr = np.zeros(bars.shape[0])
 
     # matplotlib show ims
@@ -53,9 +53,9 @@ if __name__ == '__main__':
     ax = fig.add_subplot(111)
     ax.imshow(bars, zorder=1, aspect='auto')
     plt.scatter([20], [20], zorder=2)
-    plt.ylabel('frame number')
-    plt.xlabel('meniscus point')
-    plt.title('click on the meniscus over time, red line shows inferred meniscus')
+    plt.ylabel('Frame number')
+    plt.xlabel('Meniscus point')
+    plt.title('Please click on the meniscus over time, red line shows inferred meniscus. \nWhen done, close window by clicking "x" in top left.')
     cid = fig.canvas.mpl_connect('button_press_event', onclick)
 
     # ax2
@@ -69,7 +69,7 @@ if __name__ == '__main__':
 
     meniscus_arr = replot(meniscus_arr)
     np.savetxt(oj(params.out_dir, 'meniscus.csv'), meniscus_arr, delimiter=',', fmt='%.2f')
-    print('saved ', oj(params.out_dir, 'meniscus.csv'))
+    print('Success! Saved inferred meniscus to ', oj(params.out_dir, 'meniscus.csv'))
 
 
     # could use maxes or means

@@ -14,7 +14,7 @@ def click_and_crop(event, x, y, flags, param):
     global pt_num
     global pts
     if event == cv2.EVENT_LBUTTONDOWN and pt_num < 4:
-        print(pt_num, 'click! ', x, y)
+        print('Clicked a corner! ', '(' + str(pt_num+1) + '/4)')
         cv2.circle(frame, (x, y), 5, color=(0, 255, 0), thickness=-1)
         pts[pt_num, 0] = x
         pts[pt_num, 1] = y
@@ -33,7 +33,7 @@ if __name__ == '__main__':
     pts = np.ones(shape=(n_points, 2), dtype=np.float32)
 
     # display image and wait for 4 clicks
-    name = "click on four corners of the tube"
+    name = "Please click the 4 corners of the tube (To exit click on picture 4 times)"
     cv2.namedWindow(name)
     cv2.setMouseCallback(name, click_and_crop)
     while pt_num < 4:
@@ -49,3 +49,4 @@ if __name__ == '__main__':
         os.makedirs(params.out_dir)
     plt.savefig(oj(params.out_dir, 'pic_tube.png'))
     np.savetxt(oj(params.out_dir, 'pos_tube.csv'), pts, delimiter=',', fmt='%.2f')
+    print('Sucess! Saved tube for video', params.vid_fname, 'to', params.out_dir)

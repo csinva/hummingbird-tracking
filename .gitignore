@@ -3,6 +3,8 @@
 data
 **.swp
 */out
+*/out*
 out
 .idea
 **__pycache*
+ref

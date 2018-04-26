@@ -26,12 +26,12 @@
 - **input: mp4 video, output: csv file with raw angle per frame**
 - this code takes a video (.MP4 preferably) as input
 - run `python 2_track_wing.py` file in the terminal
-- this will save out a `thetas.csv` file with the wing angle over time (and optionally some frames to analyze the performance)
+- this will save out a `angles.csv` file with the wing angle over time (and optionally some frames to analyze the performance)
 
 
 ## 3 - viewing angle / finding wingbeats
 - **input: csv file with angles, output: processed times of wingbeats**
- - run `python 3_view_thetas.py` in the terminal
+ - run `python 3_view_angles.py` in the terminal
  - this will save out an "extrema.csv" file which identifies frame numbers with wingbeats
 
  

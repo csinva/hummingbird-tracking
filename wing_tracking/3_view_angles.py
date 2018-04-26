@@ -8,6 +8,7 @@ sys.path.insert(1, os.path.join(sys.path[0], '..'))
 import util
 from scipy.signal import argrelextrema
 import params
+np.warnings.filterwarnings('ignore') # note this shouldn't be kept in during development!!!
 
 
 def load_thetas(fname):
@@ -81,7 +82,7 @@ if __name__ == '__main__':
     label_file = '../data/top/labels/fastec/fastec_test.csv'
 
     # get resulting fname
-    thetas_fname = oj(params.out_dir, 'thetas.csv')
+    thetas_fname = oj(params.out_dir, 'angles.csv')
     t, thetas = load_thetas(thetas_fname)
     extrema_idxs_pred, yhat = smooth_and_find_extrema(thetas, params.out_dir)
     extrema_ts_pred = t[extrema_idxs_pred]
@@ -94,13 +95,14 @@ if __name__ == '__main__':
     plt.plot(extrema_ts_pred, yhat[extrema_idxs_pred],
              'x', color='black', label='pred')
     plt.xlabel('Frame number')
-    plt.ylabel('Theta')
-    plt.xlim((0, 500))
+    plt.ylabel('Wing angle')
+    # plt.xlim((0, 500))
 
     # annotate w/ text
-    for xy in zip(extrema_ts_pred, yhat[extrema_idxs_pred]):
-        ax.annotate('%s' % xy[0], xy=xy, textcoords='data')
+    # for xy in zip(extrema_ts_pred, yhat[extrema_idxs_pred]):
+    #     ax.annotate('%s' % xy[0], xy=xy, textcoords='data')
 
+    '''
     try:  # stuff with labels
         labs = np.loadtxt(label_file)
         # labs = np.insert(labs, 0, 0)
@@ -123,8 +125,11 @@ if __name__ == '__main__':
 
         # calc prec, rec
         calc_stats_all(extrema_ts_pred, extrema_ts_labs)
+
     except Exception as e:
-        print('error', e)
+        # print('error', e)
+        pass
+    '''
 
     plt.legend()
     plt.show()

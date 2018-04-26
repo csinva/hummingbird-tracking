@@ -139,7 +139,7 @@ def track_angle_for_clip(vid_fname, out_dir="out", num_frames=None, num_lines=20
     bird_presents = np.zeros((num_frames, 1))  # stores the data
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
-    print('num_frames', num_frames, 'num_frames_total', num_frames_total)
+    # print('num_frames', num_frames, 'num_frames_total', num_frames_total)
 
     # iterate
     for frame_num in tqdm(range(num_frames)):
@@ -151,8 +151,8 @@ def track_angle_for_clip(vid_fname, out_dir="out", num_frames=None, num_lines=20
         frame_motion[frame_motion == 255] = 0
         # print('unique', np.unique(frame_motion))
         frame_motion_rgb = cv2.cvtColor(frame_motion, cv2.COLOR_GRAY2RGB)
-        if frame_num % 250 == 0:
-            print('frame_num', frame_num)
+        # if frame_num % 250 == 0:
+        #     print('frame_num', frame_num)
         try:
             if bird_is_present(frame_motion_rgb):  # CHANDAN LOOK HERE
                 # try:
@@ -201,16 +201,17 @@ def track_angle_for_clip(vid_fname, out_dir="out", num_frames=None, num_lines=20
 
                 # set bird to present and save
                 bird_presents[frame_num] = 1
-                if save_ims and frame_num < 100:
+                if save_ims == 'yes' and frame_num < 100 and frame_num % 4 == 0:
                     for im in (frame, frame_motion_rgb):
                         plot_endpoints(im, bot_botwing, bot_topwing, top_botwing, top_topwing)
-                        cv2.putText(im, "theta: %g %g %g" % (thetas[frame_num], theta_botwing, theta_topwing),
+                        cv2.putText(im, "angle: %g %g %g" % (thetas[frame_num], theta_botwing, theta_topwing),
                                     (0, 40),
                                     cv2.FONT_HERSHEY_SIMPLEX, fontScale=0.5, color=(0, 255, 0))
                         imageio.imwrite(oj(out_dir, 'frame_' + str(frame_num) + '_motion.jpg'), frame_motion_rgb)
-                        imageio.imwrite(oj(out_dir, 'frame_' + str(frame_num) + '.jpg'), frame)
+                        # imageio.imwrite(oj(out_dir, 'frame_' + str(frame_num) + '.jpg'), frame)
         except Exception as e:
-            print('error', e)
+            # print('error', e)
+            pass
 
     # release video
     cap.release()
@@ -221,10 +222,10 @@ def track_angle_for_clip(vid_fname, out_dir="out", num_frames=None, num_lines=20
     plt.plot(range(num_frames), thetas, 'o')
     plt.xlabel('Frame number')
     plt.ylabel('Theta')
-    plt.savefig(oj(out_dir, 'thetas.png'))
-    np.savetxt(oj(out_dir, 'thetas.csv'), thetas, fmt="%3.2f", delimiter=',')
+    plt.savefig(oj(out_dir, 'angles.png'))
+    np.savetxt(oj(out_dir, 'angles.csv'), thetas, fmt="%3.2f", delimiter=',')
     np.savetxt(oj(out_dir, 'bird_present.csv'), bird_presents, fmt="%3.2f", delimiter=',')
-    print('succesfully completed')
+    print('Success! Tracked video', params.vid_fname, 'and saved results into folder', params.out_dir)
 
 
 if __name__ == "__main__":
