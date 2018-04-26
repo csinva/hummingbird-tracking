@@ -10,3 +10,4 @@ save_ims = 'yes'  # whether or not to save images out ('yes' or 'no')
 
 # shared params for 2_track_wing.py + 3_view_thetas.py
 out_dir = '../data_sample/out_wing/'  # folder to store output
+open_plots = 'yes'  # whether or not to open plots (set to no if running in a loop)

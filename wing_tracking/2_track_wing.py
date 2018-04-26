@@ -11,6 +11,7 @@ import cv2
 import params
 from tqdm import tqdm
 
+
 # draw two arrows onto the given image
 def plot_endpoints(im_rgb, start1, start2, end1, end2):
     starts = [start1, start2]
@@ -230,4 +231,4 @@ def track_angle_for_clip(vid_fname, out_dir="out", num_frames=None, num_lines=20
 
 if __name__ == "__main__":
     track_angle_for_clip(params.vid_fname, out_dir=params.out_dir,
-                         num_frames=5000, save_ims=params.save_ims)  # NUM_FRAMES=20
+                         num_frames=None, save_ims=params.save_ims)  # NUM_FRAMES=20
