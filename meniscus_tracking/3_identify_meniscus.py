@@ -80,7 +80,7 @@ def identify_meniscus(params):
     plt.show()
 
     meniscus_arr = replot(meniscus_arr)
-    np.savetxt(oj(params.out_dir, 'meniscus.csv'), meniscus_arr, delimiter=',', fmt='%.2f')
+    np.savetxt(oj(params.out_dir, 'meniscus.csv'), meniscus_arr/bars.shape[1], delimiter=',', fmt='%.2f')
     print('Success! Saved inferred meniscus to ', oj(params.out_dir, 'meniscus.csv'))
 
 

@@ -34,7 +34,7 @@
  - run `python 3_identify_meniscus.py` in the terminal
  - this will open up a dialog to select the meniscus
  - when satisfied with the meniscus, click the x to exit
- - will save out 'meniscus.csv' file which identifies meniscus over time
+ - will save out 'meniscus.csv' file which identifies meniscus over time (as a percentage of the tube)
 
  
 
