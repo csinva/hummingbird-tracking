@@ -16,6 +16,7 @@
 
 # parameters
 - set parameters in the `params.py` file
+- there are two ways to run - one can run each file individually (detailed in the following 3 sections) or one can simply run the `run_loop.py` file by running `python run_loop.py` in the terminal
 
 ## 1 - preprocessing
 - **input: images, output: mp4 video**

@@ -76,7 +76,7 @@ def calc_stats_all(pred, lab):
     print('mistakes', pred[mistakes], len(mistakes), pred.size)
 
 
-if __name__ == '__main__':
+def view_angles(params):
     # get resulting fname
     thetas_fname = oj(params.out_dir, 'angles.csv')
     t, thetas = load_thetas(thetas_fname)
@@ -131,3 +131,8 @@ if __name__ == '__main__':
         '''
         plt.legend()
         plt.show()
+    print('Success! Processed angles in directory ', params.out_dir)
+
+
+if __name__ == '__main__':
+    view_angles(params)
