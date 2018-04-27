@@ -1,5 +1,6 @@
 # params for 1_convert_ims
-image_folder = '../data_sample/wing_sample_loop'  # folder containing images (if running using run_loop, this points to a folder of folders containing images)
+image_folder = '../data_sample/wing_sample/ims1'  # folder containing images (not used in run_loop.py)
+image_folders = '../data_sample/wing_sample'  # folder of folders containing images (only for run_loop.py)
 horizontal_flip = 'yes'  # set this to 'yes' to flip video otherwise leave it as 'no'
 
 # shared params for 1_convert_ims + 2_track_wing.py

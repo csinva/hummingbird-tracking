@@ -13,6 +13,7 @@ def convert_ims(params):
         os.makedirs(params.out_dir)
 
     # get fnames and create writer
+    print(params.image_folder)
     im_fnames = [img for img in sorted(os.listdir(params.image_folder)) if img.endswith(".jpg")]
     frame = cv2.imread(os.path.join(params.image_folder, im_fnames[0]))
     height, width, layers = frame.shape

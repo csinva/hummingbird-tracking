@@ -12,6 +12,7 @@
 
 # parameters
 - set all parameters in the `params.py` file
+- run_loop.py doesn't quite work
 
 ## 0 - make images into a video
 - for fastec videos, images must be combined into a video before running (see wing_tracking folder)

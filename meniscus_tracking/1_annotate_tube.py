@@ -14,14 +14,18 @@ def click_and_crop(event, x, y, flags, param):
     global pt_num
     global pts
     if event == cv2.EVENT_LBUTTONDOWN and pt_num < 4:
-        print('Clicked a corner! ', '(' + str(pt_num+1) + '/4)')
+        print('Clicked a corner! ', '(' + str(pt_num + 1) + '/4)')
         cv2.circle(frame, (x, y), 5, color=(0, 255, 0), thickness=-1)
         pts[pt_num, 0] = x
         pts[pt_num, 1] = y
         pt_num += 1
 
 
-if __name__ == '__main__':
+def annotate_tube(params):
+    global frame
+    global pt_num
+    global pts
+
     # get 1st frame
     cap = cv2.VideoCapture(params.vid_fname)
     ret, frame = cap.read()
@@ -50,3 +54,7 @@ if __name__ == '__main__':
     plt.savefig(oj(params.out_dir, 'pic_tube.png'))
     np.savetxt(oj(params.out_dir, 'pos_tube.csv'), pts, delimiter=',', fmt='%.2f')
     print('Sucess! Saved tube for video', params.vid_fname, 'to', params.out_dir)
+
+
+if __name__ == '__main__':
+    annotate_tube(params)

@@ -14,14 +14,17 @@ cmap.set_bad(color='red')
 
 
 def replot(meniscus_arr):
+    global fig
+    global ax1
     global p2
+    global bars
+
     # fill in meniscus_arr
     idx = np.min(np.arange(0, bars.shape[0])[np.nonzero(meniscus_arr)])  # first nonzero idx
     first_val = meniscus_arr[idx]
 
     xs = np.arange(len(meniscus_arr))
-    arr = np.interp(x=xs,
-                    xp=xs[meniscus_arr > 0],
+    arr = np.interp(x=xs, xp=xs[meniscus_arr > 0],
                     fp=meniscus_arr[meniscus_arr > 0])
     for i in range(idx):
         arr[i] = first_val
@@ -34,6 +37,8 @@ def onclick(event):
     global meniscus_arr
     global fig
     global ax1
+    global p2
+    global bars
 
     t, x = int(event.ydata), int(event.xdata)
     meniscus_arr[t] = x
@@ -43,7 +48,13 @@ def onclick(event):
     # plt.show()
 
 
-if __name__ == '__main__':
+def identify_meniscus(params):
+    global meniscus_arr
+    global fig
+    global ax1
+    global p2
+    global bars
+
     # load data
     bars = np.loadtxt(oj(params.out_dir, 'unprocessed_meniscus.csv'), delimiter=',')
     meniscus_arr = np.zeros(bars.shape[0])
@@ -55,7 +66,8 @@ if __name__ == '__main__':
     plt.scatter([20], [20], zorder=2)
     plt.ylabel('Frame number')
     plt.xlabel('Meniscus point')
-    plt.title('Please click on the meniscus over time, red line shows inferred meniscus. \nWhen done, close window by clicking "x" in top left.')
+    plt.title(
+        'Please click on the meniscus over time, red line shows inferred meniscus. \nWhen done, close window by clicking "x" in top left.')
     cid = fig.canvas.mpl_connect('button_press_event', onclick)
 
     # ax2
@@ -99,3 +111,7 @@ if __name__ == '__main__':
     #     # print(means.shape, means[:1000])
     #
     #     return means
+
+
+if __name__ == '__main__':
+    identify_meniscus(params)

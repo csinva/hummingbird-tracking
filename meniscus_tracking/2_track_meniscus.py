@@ -23,8 +23,11 @@ def bird_is_drinking(tube_big_motion):
         return False
 
 
-def track_clip(vid_fname, tube_pos, tube_capacity,
-               out_dir="out", NUM_FRAMES=None, NUM_LINES=20, save_ims=False):
+def track_clip(vid_fname, out_dir="out", NUM_FRAMES=None, NUM_LINES=20, save_ims=False):
+    # read in tube_pos
+    tube_pos = np.loadtxt(oj(out_dir, 'pos_tube.csv'),
+                          delimiter=',')  # tube corners (topleft, topright, botright, botleft)
+
     # open video and create background subtractors
     # logging.info('tracking %s', vid_fname)
     cap = cv2.VideoCapture(vid_fname)
@@ -134,21 +137,6 @@ def track_clip(vid_fname, tube_pos, tube_capacity,
 
 
 if __name__ == "__main__":
-    # hyperparams - denoising_param, conf_thresh, jump_thresh
-    logging.basicConfig(stream=sys.stdout, level=logging.INFO, format='%(message)s')
-    # data_folder = '/Users/chandan/drive/research/vision/hummingbird/data'
-
-    # vid_fname = '/Users/chandan/drive/research/vision/hummingbird/data/side/b.mov'  # name of input video
-
-    # fname = oj(data_folder, 'side', 'b.mov')
-    # out_dir = "out_b"
-
-    # read in tube_pos
-    tube_capacity = 300  # in mL
-    tube_pos = np.loadtxt(oj(params.out_dir, 'pos_tube.csv'),
-                          delimiter=',')  # tube corners (topleft, topright, botright, botleft)
-    # print('tube_pos', tube_pos)
 
     # track clip
-    track_clip(params.vid_fname, tube_pos, tube_capacity,
-               out_dir=params.out_dir, NUM_FRAMES=None, save_ims=params.save_ims)
+    track_clip(params.vid_fname, out_dir=params.out_dir, save_ims=params.save_ims)
