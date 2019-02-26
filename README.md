@@ -1,5 +1,5 @@
 # hummingbird_tracking
-Code for tracking things in hummingbird videos.
+Code for tracking things in hummingbird videos. Slides summarizing this work [here](https://docs.google.com/presentation/d/15iygjXGLu7Ha096GwMV5t6sjP7IPcTHqimPkTDwrpPI/present?slide=id.p).
 
 ## requirements
 - python3
